@@ -8,7 +8,6 @@ Proyek ini adalah Tugas Mandiri mata kuliah **Pengembangan Aplikasi Berbasis Web
 | **Nama** | Lyson Paulus Esar Manik |
 | **NIM** | 11S24024 |
 | **Mata kuliah** | Pengembangan Aplikasi Berbasis Web |
-| **Dosen** | Arie Satia Dharma, S.T., M.Kom |
 | **Materi** | Membangun REST API menggunakan Gin Framework |
 
 ---
