@@ -8,17 +8,17 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #1e293b; padding: 24px; }
-    .container { max-width: 900px; margin: 0 auto; }
+    .container { max-width: 1050px; margin: 0 auto; }
     header { background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 24px 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
     header h1 { font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
     header p { opacity: 0.9; font-size: 14px; margin-top: 4px; }
     .badge { background: rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; backdrop-filter: blur(4px); }
     .card { background: white; border-radius: 16px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
     .card-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; color: #0f172a; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; }
-    input[type="text"] { width: 100%; padding: 10px 16px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; outline: none; }
-    input[type="text"]:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
-    button { padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; border: none; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .form-grid { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr 1fr 1fr auto; gap: 10px; align-items: center; }
+    input[type="text"], input[type="number"] { width: 100%; padding: 10px 14px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; outline: none; }
+    input[type="text"]:focus, input[type="number"]:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+    button { padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; border: none; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
     .btn-primary { background: #2563eb; color: white; }
     .btn-primary:hover { background: #1d4ed8; }
     .btn-edit { background: #f59e0b; color: white; padding: 6px 12px; font-size: 12px; border-radius: 6px; }
@@ -29,17 +29,21 @@
     .btn-secondary:hover { background: #cbd5e1; }
     .search-box { display: flex; gap: 10px; margin-bottom: 16px; }
     table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-    th { text-align: left; padding: 12px 16px; background: #f8fafc; font-size: 13px; font-weight: 600; color: #64748b; border-bottom: 1.5px solid #e2e8f0; }
-    td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+    th { text-align: left; padding: 12px 14px; background: #f8fafc; font-size: 13px; font-weight: 600; color: #64748b; border-bottom: 1.5px solid #e2e8f0; }
+    td { padding: 14px 14px; border-bottom: 1px solid #f1f5f9; font-size: 13.5px; }
     tr:hover td { background: #f8fafc; }
+    .tag-stock { background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 12px; font-weight: 600; font-size: 12px; }
     .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 10px; color: white; font-size: 14px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); display: none; z-index: 1000; }
     .toast.success { background: #10b981; }
     .toast.error { background: #ef4444; }
     .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 999; }
-    .modal-content { background: white; padding: 28px; border-radius: 16px; width: 420px; max-width: 90%; }
+    .modal-content { background: white; padding: 28px; border-radius: 16px; width: 480px; max-width: 90%; }
     .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { font-size: 13px; font-weight: 600; color: #475569; display: block; margin-bottom: 5px; }
     .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
     .empty-msg { text-align: center; color: #94a3b8; padding: 32px; font-size: 14px; }
+    .date-text { font-size: 12px; color: #64748b; }
   </style>
 </head>
 <body>
@@ -47,7 +51,7 @@
     <header>
       <div>
         <h1>📚 Gin Books Management</h1>
-        <p>Aplikasi CRUD Desktop terhubung langsung ke PostgreSQL (Database: <b>gin_books_db</b>)</p>
+        <p>Aplikasi CRUD terhubung ke PostgreSQL (Database: <b>gin_books_db</b>)</p>
       </div>
       <div class="badge">🐘 PostgreSQL 18 Active</div>
     </header>
@@ -56,7 +60,10 @@
       <div class="card-title">✨ Tambah Buku Baru</div>
       <form id="addBookForm" class="form-grid">
         <input type="text" id="newTitle" placeholder="Judul Buku..." required>
-        <input type="text" id="newAuthor" placeholder="Nama Penulis..." required>
+        <input type="text" id="newAuthor" placeholder="Penulis..." required>
+        <input type="text" id="newISBN" placeholder="ISBN (cth: 978-602-001)">
+        <input type="number" id="newYear" placeholder="Tahun" min="1900" max="2100">
+        <input type="number" id="newStock" placeholder="Stok" min="0" value="1">
         <button type="submit" class="btn-primary">➕ Tambah</button>
       </form>
     </div>
@@ -64,7 +71,7 @@
     <div class="card">
       <div class="card-title">📖 Daftar Koleksi Buku</div>
       <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Cari berdasarkan nama penulis (contoh: Ayu, Bima)...">
+        <input type="text" id="searchInput" placeholder="Cari berdasarkan nama penulis (contoh: Ayu, Bima, Lyson)...">
         <button type="button" class="btn-primary" onclick="searchBooks()">Cari</button>
         <button type="button" class="btn-secondary" onclick="resetSearch()">Semua</button>
       </div>
@@ -72,10 +79,14 @@
       <table>
         <thead>
           <tr>
-            <th style="width: 70px;">ID</th>
+            <th style="width: 50px;">ID</th>
             <th>Judul Buku</th>
             <th>Penulis</th>
-            <th style="width: 160px; text-align: center;">Aksi</th>
+            <th>ISBN</th>
+            <th style="width: 70px;">Tahun</th>
+            <th style="width: 70px;">Stok</th>
+            <th style="width: 140px;">Dibuat Pada</th>
+            <th style="width: 140px; text-align: center;">Aksi</th>
           </tr>
         </thead>
         <tbody id="booksTableBody"></tbody>
@@ -89,13 +100,27 @@
       <div class="modal-title">✏️ Edit Data Buku</div>
       <form id="editBookForm">
         <input type="hidden" id="editBookId">
-        <div style="margin-bottom: 14px;">
-          <label style="font-size: 13px; font-weight: 600; color: #475569; display:block; margin-bottom: 6px;">Judul Buku</label>
+        <div class="form-group">
+          <label>Judul Buku</label>
           <input type="text" id="editTitle" required>
         </div>
-        <div style="margin-bottom: 14px;">
-          <label style="font-size: 13px; font-weight: 600; color: #475569; display:block; margin-bottom: 6px;">Penulis</label>
+        <div class="form-group">
+          <label>Penulis</label>
           <input type="text" id="editAuthor" required>
+        </div>
+        <div class="form-group">
+          <label>ISBN</label>
+          <input type="text" id="editISBN" placeholder="ISBN">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Tahun Terbit</label>
+            <input type="number" id="editYear" min="1900" max="2100">
+          </div>
+          <div class="form-group">
+            <label>Stok</label>
+            <input type="number" id="editStock" min="0">
+          </div>
         </div>
         <div class="modal-buttons">
           <button type="button" class="btn-secondary" onclick="closeEditModal()">Batal</button>
@@ -118,6 +143,12 @@
       setTimeout(() => toast.style.display = 'none', 3000);
     }
 
+    function formatDate(dateStr) {
+      if (!dateStr || dateStr.startsWith('0001-01-01')) return '-';
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
     async function loadBooks(authorFilter = '') {
       try {
         let url = API_BASE + '/api/books';
@@ -135,12 +166,21 @@
 
         data.data.forEach(book => {
           const tr = document.createElement('tr');
+          const isbn = book.isbn || '-';
+          const year = book.publish_year > 0 ? book.publish_year : '-';
+          const stock = book.stock != null ? book.stock : 0;
+          const createdAt = formatDate(book.created_at);
+
           tr.innerHTML = `
             <td><b>#${book.id}</b></td>
-            <td>${book.title}</td>
+            <td><b>${book.title}</b></td>
             <td>${book.author}</td>
+            <td><code>${isbn}</code></td>
+            <td>${year}</td>
+            <td><span class="tag-stock">${stock} pcs</span></td>
+            <td><span class="date-text">${createdAt}</span></td>
             <td style="text-align: center;">
-              <button class="btn-edit" onclick="openEditModal(${book.id}, '${book.title.replace(/'/g, "\\'")}', '${book.author.replace(/'/g, "\\'")}')">✏️ Edit</button>
+              <button class="btn-edit" onclick="openEditModal(${book.id}, '${book.title.replace(/'/g, "\\'")}', '${book.author.replace(/'/g, "\\'")}', '${(book.isbn||'').replace(/'/g, "\\'")}', ${book.publish_year||0}, ${book.stock||0})">✏️ Edit</button>
               <button class="btn-delete" onclick="deleteBook(${book.id})">🗑️ Hapus</button>
             </td>
           `;
@@ -155,18 +195,25 @@
       e.preventDefault();
       const title = document.getElementById('newTitle').value.trim();
       const author = document.getElementById('newAuthor').value.trim();
+      const isbn = document.getElementById('newISBN').value.trim();
+      const publish_year = parseInt(document.getElementById('newYear').value) || 0;
+      const stock = parseInt(document.getElementById('newStock').value) || 0;
+
       if (!title || !author) return;
 
       try {
         const res = await fetch(API_BASE + '/api/books', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, author })
+          body: JSON.stringify({ title, author, isbn, publish_year, stock })
         });
         if (res.ok) {
           showToast('Buku berhasil ditambahkan ke PostgreSQL!');
           document.getElementById('newTitle').value = '';
           document.getElementById('newAuthor').value = '';
+          document.getElementById('newISBN').value = '';
+          document.getElementById('newYear').value = '';
+          document.getElementById('newStock').value = '1';
           loadBooks();
         } else {
           const err = await res.json();
@@ -192,10 +239,13 @@
       }
     }
 
-    function openEditModal(id, title, author) {
+    function openEditModal(id, title, author, isbn, year, stock) {
       document.getElementById('editBookId').value = id;
       document.getElementById('editTitle').value = title;
       document.getElementById('editAuthor').value = author;
+      document.getElementById('editISBN').value = isbn || '';
+      document.getElementById('editYear').value = year > 0 ? year : '';
+      document.getElementById('editStock').value = stock != null ? stock : 0;
       document.getElementById('editModal').style.display = 'flex';
     }
 
@@ -208,12 +258,15 @@
       const id = document.getElementById('editBookId').value;
       const title = document.getElementById('editTitle').value.trim();
       const author = document.getElementById('editAuthor').value.trim();
+      const isbn = document.getElementById('editISBN').value.trim();
+      const publish_year = parseInt(document.getElementById('editYear').value) || 0;
+      const stock = parseInt(document.getElementById('editStock').value) || 0;
 
       try {
         const res = await fetch(API_BASE + '/api/books/' + id, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, author })
+          body: JSON.stringify({ title, author, isbn, publish_year, stock })
         });
         if (res.ok) {
           showToast('Buku #' + id + ' berhasil diperbarui!');

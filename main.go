@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
@@ -18,10 +19,15 @@ import (
 // MODEL DAN DATABASE POSTGRESQL (GORM)
 // ===================================================================
 
+// Book adalah model database buku dengan field tambahan (ISBN, PublishYear, Stock, CreatedAt).
 type Book struct {
-	ID     uint   `json:"id" gorm:"primaryKey;autoIncrement"`
-	Title  string `json:"title" binding:"required"`
-	Author string `json:"author" binding:"required"`
+	ID          uint      `json:"id" gorm:"primaryKey;autoIncrement"`
+	Title       string    `json:"title" binding:"required"`
+	Author      string    `json:"author" binding:"required"`
+	ISBN        string    `json:"isbn"`
+	PublishYear int       `json:"publish_year"`
+	Stock       int       `json:"stock"`
+	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
 
 var db *gorm.DB
@@ -54,6 +60,7 @@ func initDB() {
 		log.Fatal("Gagal membuka koneksi database PostgreSQL: ", err)
 	}
 
+	// Migrasi otomatis schema tabel books (menambahkan kolom baru jika belum ada)
 	if err := db.AutoMigrate(&Book{}); err != nil {
 		log.Fatal("Gagal melakukan migrasi tabel: ", err)
 	}
@@ -61,8 +68,8 @@ func initDB() {
 	var count int64
 	db.Model(&Book{}).Count(&count)
 	if count == 0 {
-		db.Create(&Book{Title: "Belajar Go", Author: "Ayu"})
-		db.Create(&Book{Title: "Web API", Author: "Bima"})
+		db.Create(&Book{Title: "Belajar Go", Author: "Ayu", ISBN: "978-602-001", PublishYear: 2023, Stock: 15})
+		db.Create(&Book{Title: "Web API", Author: "Bima", ISBN: "978-602-002", PublishYear: 2024, Stock: 10})
 		log.Println("Data awal berhasil di-seed ke tabel books di PostgreSQL")
 	}
 }
@@ -97,6 +104,8 @@ func bindBook(c *gin.Context) (Book, bool) {
 
 	input.Title = strings.TrimSpace(input.Title)
 	input.Author = strings.TrimSpace(input.Author)
+	input.ISBN = strings.TrimSpace(input.ISBN)
+
 	if input.Title == "" || input.Author == "" {
 		respondError(c, http.StatusBadRequest,
 			"title dan author tidak boleh kosong")
@@ -198,6 +207,10 @@ func updateBook(c *gin.Context) {
 
 	book.Title = input.Title
 	book.Author = input.Author
+	book.ISBN = input.ISBN
+	book.PublishYear = input.PublishYear
+	book.Stock = input.Stock
+
 	if err := db.Save(&book).Error; err != nil {
 		respondError(c, http.StatusInternalServerError, "Gagal memperbarui buku")
 		return
@@ -235,7 +248,6 @@ func setupRouter() *gin.Engine {
 	r.Use(gin.Recovery())
 	r.Use(RequestInfo())
 
-	// Middleware CORS agar UI Desktop bisa melakukan fetch tanpa terhalang browser CORS policy
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
@@ -251,7 +263,6 @@ func setupRouter() *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// Tampilan UI Desktop di root "/"
 	r.GET("/", func(c *gin.Context) {
 		if _, err := os.Stat("index.html"); err == nil {
 			c.File("index.html")
