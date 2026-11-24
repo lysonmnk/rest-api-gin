@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Masuk - Gin Books Management</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      color: #334155;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      background: #ffffff;
+      width: 100%;
+      max-width: 440px;
+      border-radius: 20px;
+      padding: 36px 32px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+    .brand-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .brand-icon {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+      margin-bottom: 12px;
+    }
+    .brand-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .brand-subtitle {
+      font-size: 13.5px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+    .input-wrapper {
+      position: relative;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s;
+    }
+    input[type="text"]:focus, input[type="password"]:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.15);
+    }
+    .toggle-pwd {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      color: #94a3b8;
+    }
+    .btn-login {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.25);
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+    .btn-login:hover {
+      background: linear-gradient(135deg, #1d4ed8, #1e40af);
+      box-shadow: 0 6px 12px -2px rgba(37, 99, 235, 0.35);
+      transform: translateY(-1px);
+    }
+    .btn-login:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .alert-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      margin-bottom: 18px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    .demo-accounts {
+      margin-top: 24px;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 12.5px;
+    }
+    .demo-title {
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .demo-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      color: #64748b;
+    }
+    .demo-item code {
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #0f172a;
+    }
+    .demo-btn {
+      background: #e2e8f0;
+      border: none;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #1e293b;
+      transition: background 0.15s;
+    }
+    .demo-btn:hover {
+      background: #cbd5e1;
+    }
+    .footer-note {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="brand-header">
+      <div class="brand-icon">📚</div>
+      <h1 class="brand-title">Gin Books API</h1>
+      <p class="brand-subtitle">Silakan masuk untuk mengakses manajemen buku</p>
+    </div>
+
+    <!-- Alert Pesan Gagal Generik -->
+    <div id="errorAlert" class="alert-error">
+      <span>⚠️</span>
+      <span id="errorMessage">Username atau password salah</span>
+    </div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="Masukkan username..." required autofocus autocomplete="username">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="input-wrapper">
+          <input type="password" id="password" placeholder="Masukkan password..." required autocomplete="current-password">
+          <button type="button" class="toggle-pwd" onclick="togglePassword()">👁️</button>
+        </div>
+      </div>
+
+      <button type="submit" id="loginBtn" class="btn-login">Masuk ke Sistem</button>
+    </form>
+
+    <!-- Akun Demo Siap Pakai -->
+    <div class="demo-accounts">
+      <div class="demo-title">🔑 Akun Default Terdaftar:</div>
+      <div class="demo-item">
+        <span>Username: <code>lyson</code> | Pass: <code>password123</code></span>
+        <button type="button" class="demo-btn" onclick="fillAccount('lyson', 'password123')">Gunakan</button>
+      </div>
+      <div class="demo-item">
+        <span>Username: <code>admin</code> | Pass: <code>admin123</code></span>
+        <button type="button" class="demo-btn" onclick="fillAccount('admin', 'admin123')">Gunakan</button>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      Terproteksi dengan enkripsi Bcrypt & HTTP-Only Cookie
+    </div>
+  </div>
+
+  <script>
+    function togglePassword() {
+      const pwd = document.getElementById('password');
+      pwd.type = pwd.type === 'password' ? 'text' : 'password';
+    }
+
+    function fillAccount(u, p) {
+      document.getElementById('username').value = u;
+      document.getElementById('password').value = p;
+      document.getElementById('errorAlert').style.display = 'none';
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorAlert = document.getElementById('errorAlert');
+      const errorMessage = document.getElementById('errorMessage');
+      const loginBtn = document.getElementById('loginBtn');
+
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      if (!username || !password) {
+        errorMessage.innerText = 'Username dan password wajib diisi';
+        errorAlert.style.display = 'flex';
+        return;
+      }
+
+      errorAlert.style.display = 'none';
+      loginBtn.disabled = true;
+      loginBtn.innerText = 'Memverifikasi...';
+
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.status === 'success') {
+          // Simpan token di localStorage sebagai fallback
+          if (data.token) {
+            localStorage.setItem('auth_token', data.token);
+          }
+          if (data.data) {
+            localStorage.setItem('user_profile', JSON.stringify(data.data));
+          }
+
+          loginBtn.innerText = '✅ Berhasil! Mengalihkan...';
+          // Redirect ke /books atau dashboard utama
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 400);
+        } else {
+          // Pesan gagal generik mitigasi risiko
+          errorMessage.innerText = data.message || 'Username atau password salah';
+          errorAlert.style.display = 'flex';
+          loginBtn.disabled = false;
+          loginBtn.innerText = 'Masuk ke Sistem';
+        }
+      } catch (err) {
+        errorMessage.innerText = 'Gagal terhubung ke server. Pastikan backend aktif.';
+        errorAlert.style.display = 'flex';
+        loginBtn.disabled = false;
+        loginBtn.innerText = 'Masuk ke Sistem';
+      }
+    });
+  </script>
+</body>
+</html>

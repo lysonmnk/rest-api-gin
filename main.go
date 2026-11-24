@@ -11,15 +11,17 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 // ===================================================================
-// MODEL DAN DATABASE POSTGRESQL (GORM)
+// MODEL DATABASE POSTGRESQL (GORM)
 // ===================================================================
 
-// Book adalah model database buku dengan field tambahan (ISBN, PublishYear, Stock, CreatedAt).
+// Book adalah model database koleksi buku.
 type Book struct {
 	ID          uint      `json:"id" gorm:"primaryKey;autoIncrement"`
 	Title       string    `json:"title" binding:"required"`
@@ -30,6 +32,16 @@ type Book struct {
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
 
+// User adalah model database untuk pengguna yang terautentikasi.
+type User struct {
+	ID        uint      `json:"id" gorm:"primaryKey;autoIncrement"`
+	Username  string    `json:"username" gorm:"uniqueIndex;not null"`
+	Password  string    `json:"-" gorm:"not null"` // Jangan tampilkan hash di response JSON
+	FullName  string    `json:"full_name"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+}
+
 var db *gorm.DB
 
 func getEnv(key, defaultVal string) string {
@@ -38,6 +50,69 @@ func getEnv(key, defaultVal string) string {
 	}
 	return defaultVal
 }
+
+// ===================================================================
+// KEAMANAN & AUTENTIKASI (BCRYPT & JWT)
+// ===================================================================
+
+var jwtSecret = []byte(getEnv("JWT_SECRET", "super-secret-jwt-key-pabwe-gin-books-2026"))
+
+type JWTClaims struct {
+	UserID   uint   `json:"user_id"`
+	Username string `json:"username"`
+	FullName string `json:"full_name"`
+	Role     string `json:"role"`
+	jwt.RegisteredClaims
+}
+
+// hashPassword menghasilkan hash Bcrypt yang aman dari plain password.
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
+}
+
+// checkPasswordHash membandingkan plain password dengan hash Bcrypt.
+func checkPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+// generateToken membuat token JWT bertanda tangan dengan masa aktif 24 jam.
+func generateToken(user User) (string, error) {
+	claims := JWTClaims{
+		UserID:   user.ID,
+		Username: user.Username,
+		FullName: user.FullName,
+		Role:     user.Role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtSecret)
+}
+
+// parseToken memverifikasi dan membaca claims dari token JWT.
+func parseToken(tokenStr string) (*JWTClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("metode signing tidak valid")
+		}
+		return jwtSecret, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
+		return claims, nil
+	}
+	return nil, errors.New("token tidak valid")
+}
+
+// ===================================================================
+// INISIALISASI DATABASE & AUTO-MIGRASI
+// ===================================================================
 
 func initDB() {
 	if db != nil {
@@ -60,17 +135,32 @@ func initDB() {
 		log.Fatal("Gagal membuka koneksi database PostgreSQL: ", err)
 	}
 
-	// Migrasi otomatis schema tabel books (menambahkan kolom baru jika belum ada)
-	if err := db.AutoMigrate(&Book{}); err != nil {
+	// Migrasi schema Book dan User secara otomatis
+	if err := db.AutoMigrate(&Book{}, &User{}); err != nil {
 		log.Fatal("Gagal melakukan migrasi tabel: ", err)
 	}
 
-	var count int64
-	db.Model(&Book{}).Count(&count)
-	if count == 0 {
-		db.Create(&Book{Title: "Belajar Go", Author: "Ayu", ISBN: "978-602-001", PublishYear: 2023, Stock: 15})
-		db.Create(&Book{Title: "Web API", Author: "Bima", ISBN: "978-602-002", PublishYear: 2024, Stock: 10})
-		log.Println("Data awal berhasil di-seed ke tabel books di PostgreSQL")
+	// Inisialisasi akun user default jika tabel masih kosong
+	var userCount int64
+	db.Model(&User{}).Count(&userCount)
+	if userCount == 0 {
+		adminHash, _ := hashPassword("admin123")
+		lysonHash, _ := hashPassword("password123")
+		db.Create(&User{Username: "admin", Password: adminHash, FullName: "Administrator", Role: "Admin"})
+		db.Create(&User{Username: "lyson", Password: lysonHash, FullName: "Lyson Manik", Role: "Mahasiswa"})
+		log.Println("Akun default admin & lyson berhasil di-seed dengan Bcrypt!")
+	}
+
+	// Inisialisasi data buku jika tabel masih kosong
+	var bookCount int64
+	db.Model(&Book{}).Count(&bookCount)
+	if bookCount == 0 {
+		db.Create(&Book{Title: "Belajar Go", Author: "Ayu", ISBN: "978-602-001-A", PublishYear: 2023, Stock: 15})
+		db.Create(&Book{Title: "Web API dengan Gin", Author: "Bima", ISBN: "978-602-002-B", PublishYear: 2024, Stock: 12})
+		db.Create(&Book{Title: "Pemrograman Berbasis Web (PABWE)", Author: "Lyson Manik", ISBN: "978-623-001-L", PublishYear: 2025, Stock: 25})
+		db.Create(&Book{Title: "Algoritma & Struktur Data", Author: "Lyson Manik", ISBN: "978-623-002-M", PublishYear: 2024, Stock: 18})
+		db.Create(&Book{Title: "Basis Data Relasional & PostgreSQL", Author: "Lyson Manik", ISBN: "978-623-003-P", PublishYear: 2025, Stock: 30})
+		log.Println("Data awal buku berhasil di-seed ke PostgreSQL")
 	}
 }
 
@@ -114,6 +204,10 @@ func bindBook(c *gin.Context) (Book, bool) {
 	return input, true
 }
 
+// ===================================================================
+// MIDDLEWARE
+// ===================================================================
+
 func RequestInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		log.Println("Request:", c.Request.Method, c.Request.URL.Path)
@@ -122,8 +216,134 @@ func RequestInfo() gin.HandlerFunc {
 	}
 }
 
+// AuthMiddleware memproteksi route dari akses yang belum terotentikasi.
+func AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var tokenStr string
+
+		// 1. Cek dari HTTP-Only Cookie
+		if cookie, err := c.Cookie("auth_token"); err == nil && cookie != "" {
+			tokenStr = cookie
+		}
+
+		// 2. Jika tidak ada di cookie, cek header Authorization: Bearer <token>
+		if tokenStr == "" {
+			authHeader := c.GetHeader("Authorization")
+			if strings.HasPrefix(authHeader, "Bearer ") {
+				tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
+			}
+		}
+
+		if tokenStr == "" {
+			respondError(c, http.StatusUnauthorized, "Akses ditolak: silakan login terlebih dahulu")
+			c.Abort()
+			return
+		}
+
+		claims, err := parseToken(tokenStr)
+		if err != nil {
+			respondError(c, http.StatusUnauthorized, "Sesi login tidak valid atau telah kedaluwarsa")
+			c.Abort()
+			return
+		}
+
+		// Simpan data identitas pengguna di konteks request
+		c.Set("userID", claims.UserID)
+		c.Set("username", claims.Username)
+		c.Set("fullName", claims.FullName)
+		c.Set("role", claims.Role)
+		c.Next()
+	}
+}
+
 // ===================================================================
-// HANDLER CRUD
+// HANDLER AUTENTIKASI (LOGIN & LOGOUT) SESUAI ALUR KULIAH
+// ===================================================================
+
+type LoginInput struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+func loginHandler(c *gin.Context) {
+	var input LoginInput
+
+	// Langkah 1 & 2: Cek Format & Validasi Input
+	if err := c.ShouldBindJSON(&input); err != nil {
+		respondError(c, http.StatusBadRequest, "Username dan password wajib diisi")
+		return
+	}
+
+	input.Username = strings.TrimSpace(input.Username)
+	input.Password = strings.TrimSpace(input.Password)
+	if input.Username == "" || input.Password == "" {
+		respondError(c, http.StatusBadRequest, "Username dan password tidak boleh kosong")
+		return
+	}
+
+	// Langkah 3: Query Parameterized untuk proteksi SQL Injection
+	var user User
+	if err := db.Where("username = ?", input.Username).First(&user).Error; err != nil {
+		// Langkah 6: Pesan Gagal Generik (mitigasi kebocoran informasi apakah username/password yang salah)
+		respondError(c, http.StatusUnauthorized, "Username atau password salah")
+		return
+	}
+
+	// Langkah 4: Verifikasi Keamanan Bandingkan Password dengan Hash Bcrypt
+	if !checkPasswordHash(input.Password, user.Password) {
+		respondError(c, http.StatusUnauthorized, "Username atau password salah")
+		return
+	}
+
+	// Langkah 5: Buat Sesi Token JWT
+	token, err := generateToken(user)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "Gagal membuat sesi login")
+		return
+	}
+
+	// Simpan ke HTTP-Only Cookie agar aman dari serangan XSS
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("auth_token", token, 3600*24, "/", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "Login berhasil",
+		"token":   token,
+		"data": gin.H{
+			"id":        user.ID,
+			"username":  user.Username,
+			"full_name": user.FullName,
+			"role":      user.Role,
+		},
+	})
+}
+
+func logoutHandler(c *gin.Context) {
+	// Menghapus cookie auth_token (MaxAge = -1)
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("auth_token", "", -1, "/", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "Logout berhasil",
+	})
+}
+
+func meHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"id":        c.MustGet("userID"),
+			"username":  c.MustGet("username"),
+			"full_name": c.MustGet("fullName"),
+			"role":      c.MustGet("role"),
+		},
+	})
+}
+
+// ===================================================================
+// HANDLER CRUD BUKU (DIPROTEKSI OLEH AUTENTIKASI)
 // ===================================================================
 
 func getBooks(c *gin.Context) {
@@ -248,6 +468,7 @@ func setupRouter() *gin.Engine {
 	r.Use(gin.Recovery())
 	r.Use(RequestInfo())
 
+	// Middleware CORS
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
@@ -263,16 +484,46 @@ func setupRouter() *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	r.GET("/", func(c *gin.Context) {
-		if _, err := os.Stat("index.html"); err == nil {
-			c.File("index.html")
-		} else {
-			c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "Gin Books API"})
+	// Halaman Login Publik
+	r.GET("/login", func(c *gin.Context) {
+		// Jika sudah login dan valid, langsung alihkan ke dashboard
+		if cookie, err := c.Cookie("auth_token"); err == nil {
+			if _, err := parseToken(cookie); err == nil {
+				c.Redirect(http.StatusFound, "/")
+				return
+			}
 		}
+		c.File("login.html")
 	})
 
+	// Halaman Utama Dashboard (Dijaga oleh Sesi)
+	r.GET("/", func(c *gin.Context) {
+		cookie, err := c.Cookie("auth_token")
+		if err != nil {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+		if _, err := parseToken(cookie); err != nil {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+		c.File("index.html")
+	})
+
+	// Endpoint API Publik untuk Login & Logout
+	r.POST("/api/login", loginHandler)
+	r.POST("/api/logout", logoutHandler)
+	r.GET("/api/logout", func(c *gin.Context) {
+		c.SetSameSite(http.SameSiteLaxMode)
+		c.SetCookie("auth_token", "", -1, "/", "", false, true)
+		c.Redirect(http.StatusFound, "/login")
+	})
+
+	// Endpoint API yang DILINDUNGI (Wajib Login)
 	api := r.Group("/api")
+	api.Use(AuthMiddleware())
 	{
+		api.GET("/me", meHandler)
 		api.GET("/books", getBooks)
 		api.GET("/books/:id", getBookByID)
 		api.POST("/books", createBook)

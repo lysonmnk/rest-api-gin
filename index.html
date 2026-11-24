@@ -3,22 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gin Books Manager - PostgreSQL Desktop</title>
+  <title>Gin Books Manager - PostgreSQL</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #1e293b; padding: 24px; }
-    .container { max-width: 1050px; margin: 0 auto; }
-    header { background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 24px 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
-    header h1 { font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
-    header p { opacity: 0.9; font-size: 14px; margin-top: 4px; }
-    .badge { background: rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; backdrop-filter: blur(4px); }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header { background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 20px 28px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    header p { opacity: 0.9; font-size: 13px; margin-top: 3px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .user-badge { background: rgba(255,255,255,0.18); padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; backdrop-filter: blur(4px); display: flex; align-items: center; gap: 6px; }
+    .btn-logout { background: #ef4444; color: white; padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-logout:hover { background: #dc2626; transform: translateY(-1px); }
     .card { background: white; border-radius: 16px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-    .card-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; color: #0f172a; }
+    .card-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; color: #0f172a; }
     .form-grid { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr 1fr 1fr auto; gap: 10px; align-items: center; }
-    input[type="text"], input[type="number"] { width: 100%; padding: 10px 14px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; outline: none; }
+    input[type="text"], input[type="number"] { width: 100%; padding: 10px 14px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 13.5px; font-family: inherit; transition: border-color 0.2s; outline: none; }
     input[type="text"]:focus, input[type="number"]:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
-    button { padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; border: none; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    button { padding: 10px 18px; border-radius: 10px; font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer; border: none; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
     .btn-primary { background: #2563eb; color: white; }
     .btn-primary:hover { background: #1d4ed8; }
     .btn-edit { background: #f59e0b; color: white; padding: 6px 12px; font-size: 12px; border-radius: 6px; }
@@ -51,9 +54,15 @@
     <header>
       <div>
         <h1>📚 Gin Books Management</h1>
-        <p>Aplikasi CRUD terhubung ke PostgreSQL (Database: <b>gin_books_db</b>)</p>
+        <p>Aplikasi CRUD Terproteksi • Database PostgreSQL (<b>gin_books_db</b>)</p>
       </div>
-      <div class="badge">🐘 PostgreSQL 18 Active</div>
+      <div class="header-right">
+        <div class="user-badge">
+          <span>👤</span>
+          <span id="userNameLabel">Memuat...</span>
+        </div>
+        <button class="btn-logout" onclick="logout()" title="Keluar dari akun">🚪 Keluar</button>
+      </div>
     </header>
 
     <div class="card">
@@ -135,6 +144,15 @@
   <script>
     const API_BASE = window.location.origin.includes('localhost:8080') ? '' : 'http://localhost:8080';
 
+    function getAuthHeaders() {
+      const headers = { 'Content-Type': 'application/json' };
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        headers['Authorization'] = 'Bearer ' + token;
+      }
+      return headers;
+    }
+
     function showToast(msg, type = 'success') {
       const toast = document.getElementById('toast');
       toast.className = 'toast ' + type;
@@ -149,11 +167,52 @@
       return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
+    // Periksa status login saat halaman dibuka
+    async function checkAuth() {
+      try {
+        const res = await fetch(API_BASE + '/api/me', {
+          headers: getAuthHeaders()
+        });
+        if (!res.ok) {
+          // Belum login atau sesi habis -> arahkan ke login
+          window.location.href = '/login';
+          return false;
+        }
+        const data = await res.json();
+        if (data.data) {
+          document.getElementById('userNameLabel').innerText = data.data.full_name + ' (' + data.data.role + ')';
+        }
+        return true;
+      } catch (err) {
+        window.location.href = '/login';
+        return false;
+      }
+    }
+
+    async function logout() {
+      if (!confirm('Apakah Anda yakin ingin keluar?')) return;
+      try {
+        await fetch(API_BASE + '/api/logout', {
+          method: 'POST',
+          headers: getAuthHeaders()
+        });
+      } catch (e) {}
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user_profile');
+      window.location.href = '/login';
+    }
+
     async function loadBooks(authorFilter = '') {
       try {
         let url = API_BASE + '/api/books';
         if (authorFilter) url += '?author=' + encodeURIComponent(authorFilter);
-        const res = await fetch(url);
+        const res = await fetch(url, { headers: getAuthHeaders() });
+        
+        if (res.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+
         const data = await res.json();
         const tbody = document.getElementById('booksTableBody');
         tbody.innerHTML = '';
@@ -187,7 +246,7 @@
           tbody.appendChild(tr);
         });
       } catch (err) {
-        showToast('Gagal terhubung ke server API (Pastikan go run . sedang berjalan)', 'error');
+        showToast('Gagal memuat data buku', 'error');
       }
     }
 
@@ -204,7 +263,7 @@
       try {
         const res = await fetch(API_BASE + '/api/books', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ title, author, isbn, publish_year, stock })
         });
         if (res.ok) {
@@ -227,7 +286,10 @@
     async function deleteBook(id) {
       if (!confirm('Apakah Anda yakin ingin menghapus buku #' + id + '?')) return;
       try {
-        const res = await fetch(API_BASE + '/api/books/' + id, { method: 'DELETE' });
+        const res = await fetch(API_BASE + '/api/books/' + id, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
         if (res.status === 204) {
           showToast('Buku #' + id + ' berhasil dihapus!');
           loadBooks();
@@ -265,7 +327,7 @@
       try {
         const res = await fetch(API_BASE + '/api/books/' + id, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ title, author, isbn, publish_year, stock })
         });
         if (res.ok) {
@@ -290,7 +352,10 @@
       loadBooks();
     }
 
-    loadBooks();
+    // Inisialisasi: Periksa autentikasi terlebih dahulu
+    checkAuth().then(isLoggedIn => {
+      if (isLoggedIn) loadBooks();
+    });
   </script>
 </body>
 </html>
