@@ -1,38 +1,75 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 // ===================================================================
-// MODEL DAN PENYIMPANAN DATA (in-memory)
+// MODEL DAN DATABASE POSTGRESQL (GORM)
 // ===================================================================
 
-// Book adalah resource utama pada API ini.
+// Book adalah model database dan resource utama pada API ini.
 type Book struct {
-	ID     int    `json:"id"`
+	ID     uint   `json:"id" gorm:"primaryKey;autoIncrement"`
 	Title  string `json:"title" binding:"required"`
 	Author string `json:"author" binding:"required"`
 }
 
-var (
-	books = []Book{
-		{ID: 1, Title: "Belajar Go", Author: "Ayu"},
-		{ID: 2, Title: "Web API", Author: "Bima"},
-	}
-	nextID = 3
+var db *gorm.DB
 
-	// mu melindungi books dan nextID dari akses bersamaan (konkurensi).
-	// Gin melayani banyak request secara paralel, jadi data bersama harus dikunci.
-	mu sync.RWMutex
-)
+func getEnv(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
+}
+
+// initDB menginisialisasi koneksi ke PostgreSQL dan menjalankan auto-migration.
+func initDB() {
+	if db != nil {
+		return
+	}
+
+	host := getEnv("DB_HOST", "localhost")
+	port := getEnv("DB_PORT", "5433")
+	user := getEnv("DB_USER", "postgres")
+	password := getEnv("DB_PASSWORD", "postgres")
+	dbname := getEnv("DB_NAME", "gin_books_db")
+	sslmode := getEnv("DB_SSLMODE", "disable")
+
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+		host, user, password, dbname, port, sslmode)
+
+	var err error
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Fatal("Gagal membuka koneksi database PostgreSQL: ", err)
+	}
+
+	// Migrasi schema tabel books secara otomatis
+	if err := db.AutoMigrate(&Book{}); err != nil {
+		log.Fatal("Gagal melakukan migrasi tabel: ", err)
+	}
+
+	// Inisialisasi data awal (seeding) jika tabel masih kosong
+	var count int64
+	db.Model(&Book{}).Count(&count)
+	if count == 0 {
+		db.Create(&Book{Title: "Belajar Go", Author: "Ayu"})
+		db.Create(&Book{Title: "Web API", Author: "Bima"})
+		log.Println("Data awal berhasil di-seed ke tabel books di PostgreSQL")
+	}
+}
 
 // ===================================================================
 // FUNGSI BANTU (helper) agar format response konsisten
@@ -47,27 +84,24 @@ func respondError(c *gin.Context, code int, message string) {
 }
 
 // parseID membaca :id dari URL dan memastikan berupa angka positif.
-// Jika tidak valid, response 400 langsung dikirim dan ok = false.
-func parseID(c *gin.Context) (id int, ok bool) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil || id <= 0 {
+func parseID(c *gin.Context) (uint, bool) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
 		respondError(c, http.StatusBadRequest, "ID tidak valid")
 		return 0, false
 	}
-	return id, true
+	return uint(id), true
 }
 
 // bindBook membaca body JSON ke struct Book, lalu memvalidasi isinya.
-// Jika gagal, response 400 langsung dikirim dan ok = false.
-func bindBook(c *gin.Context) (input Book, ok bool) {
+func bindBook(c *gin.Context) (Book, bool) {
+	var input Book
 	if err := c.ShouldBindJSON(&input); err != nil {
 		respondError(c, http.StatusBadRequest,
 			"Body JSON tidak valid: field title dan author wajib diisi")
 		return Book{}, false
 	}
 
-	// Validasi aturan tambahan: tag `required` tetap meloloskan " " (spasi saja),
-	// jadi kita periksa lagi setelah dirapikan.
 	input.Title = strings.TrimSpace(input.Title)
 	input.Author = strings.TrimSpace(input.Author)
 	if input.Title == "" || input.Author == "" {
@@ -87,27 +121,32 @@ func bindBook(c *gin.Context) (input Book, ok bool) {
 func RequestInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		log.Println("Request:", c.Request.Method, c.Request.URL.Path)
-		c.Next() // lanjutkan ke middleware/handler berikutnya
+		c.Next()
 		log.Println("Status:", c.Writer.Status())
 	}
 }
 
 // ===================================================================
-// HANDLER CRUD
+// HANDLER CRUD MENGGUNAKAN POSTGRESQL (GORM)
 // ===================================================================
 
-// getBooks -> GET /api/books  (opsional: ?author=nama)
+// getBooks -> GET /api/books (opsional: ?author=nama)
 func getBooks(c *gin.Context) {
 	author := strings.TrimSpace(c.Query("author"))
+	var result []Book
 
-	mu.RLock()
-	defer mu.RUnlock()
+	query := db
+	if author != "" {
+		query = query.Where("LOWER(author) = LOWER(?)", author)
+	}
 
-	result := make([]Book, 0) // make(...) supaya hasil kosong menjadi [] bukan null
-	for _, b := range books {
-		if author == "" || strings.EqualFold(b.Author, author) {
-			result = append(result, b)
-		}
+	if err := query.Order("id asc").Find(&result).Error; err != nil {
+		respondError(c, http.StatusInternalServerError, "Gagal mengambil data buku")
+		return
+	}
+
+	if result == nil {
+		result = make([]Book, 0)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -124,16 +163,17 @@ func getBookByID(c *gin.Context) {
 		return
 	}
 
-	mu.RLock()
-	defer mu.RUnlock()
-
-	for _, b := range books {
-		if b.ID == id {
-			c.JSON(http.StatusOK, gin.H{"status": "success", "data": b})
-			return
+	var book Book
+	if err := db.First(&book, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			respondError(c, http.StatusNotFound, "Buku tidak ditemukan")
+		} else {
+			respondError(c, http.StatusInternalServerError, "Terjadi kesalahan pada server")
 		}
+		return
 	}
-	respondError(c, http.StatusNotFound, "Buku tidak ditemukan")
+
+	c.JSON(http.StatusOK, gin.H{"status": "success", "data": book})
 }
 
 // createBook -> POST /api/books
@@ -143,12 +183,11 @@ func createBook(c *gin.Context) {
 		return
 	}
 
-	mu.Lock()
-	defer mu.Unlock()
-
-	input.ID = nextID // ID dibuat server, bukan dari client
-	nextID++
-	books = append(books, input)
+	input.ID = 0 // ID digenerate otomatis oleh sequence database
+	if err := db.Create(&input).Error; err != nil {
+		respondError(c, http.StatusInternalServerError, "Gagal menyimpan buku")
+		return
+	}
 
 	c.JSON(http.StatusCreated, gin.H{"status": "success", "data": input})
 }
@@ -164,18 +203,24 @@ func updateBook(c *gin.Context) {
 		return
 	}
 
-	mu.Lock()
-	defer mu.Unlock()
-
-	for i := range books {
-		if books[i].ID == id {
-			books[i].Title = input.Title
-			books[i].Author = input.Author
-			c.JSON(http.StatusOK, gin.H{"status": "success", "data": books[i]})
-			return
+	var book Book
+	if err := db.First(&book, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			respondError(c, http.StatusNotFound, "Buku tidak ditemukan")
+		} else {
+			respondError(c, http.StatusInternalServerError, "Terjadi kesalahan pada server")
 		}
+		return
 	}
-	respondError(c, http.StatusNotFound, "Buku tidak ditemukan")
+
+	book.Title = input.Title
+	book.Author = input.Author
+	if err := db.Save(&book).Error; err != nil {
+		respondError(c, http.StatusInternalServerError, "Gagal memperbarui buku")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "success", "data": book})
 }
 
 // deleteBook -> DELETE /api/books/:id
@@ -185,38 +230,33 @@ func deleteBook(c *gin.Context) {
 		return
 	}
 
-	mu.Lock()
-	defer mu.Unlock()
-
-	for i := range books {
-		if books[i].ID == id {
-			books = append(books[:i], books[i+1:]...)
-			c.Status(http.StatusNoContent) // 204: berhasil, tanpa body
-			return
-		}
+	res := db.Delete(&Book{}, id)
+	if res.Error != nil {
+		respondError(c, http.StatusInternalServerError, "Gagal menghapus buku")
+		return
 	}
-	respondError(c, http.StatusNotFound, "Buku tidak ditemukan")
+	if res.RowsAffected == 0 {
+		respondError(c, http.StatusNotFound, "Buku tidak ditemukan")
+		return
+	}
+
+	c.Status(http.StatusNoContent) // 204 No Content
 }
 
 // ===================================================================
 // ROUTER
 // ===================================================================
 
-// setupRouter dipisahkan dari main() agar mudah diuji dengan httptest.
 func setupRouter() *gin.Engine {
-	// gin.New() = router kosong, middleware dipasang manual sesuai kebutuhan.
-	// (gin.Default() sudah memasang Logger + Recovery otomatis.)
 	r := gin.New()
-	r.Use(gin.Logger())   // mencatat setiap request
-	r.Use(gin.Recovery()) // mencegah server mati saat terjadi panic (balas 500)
-	r.Use(RequestInfo())  // middleware buatan sendiri
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
+	r.Use(RequestInfo())
 
-	// Endpoint cek kesehatan server
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// Group: semua endpoint di bawah ini berawalan /api
 	api := r.Group("/api")
 	{
 		api.GET("/books", getBooks)
@@ -226,7 +266,6 @@ func setupRouter() *gin.Engine {
 		api.DELETE("/books/:id", deleteBook)
 	}
 
-	// Endpoint yang tidak terdaftar -> 404 dengan format JSON yang konsisten
 	r.NoRoute(func(c *gin.Context) {
 		respondError(c, http.StatusNotFound, "Endpoint tidak ditemukan")
 	})
@@ -235,7 +274,8 @@ func setupRouter() *gin.Engine {
 }
 
 func main() {
-	// Port bisa diganti lewat environment variable PORT (default 8080)
+	initDB()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"

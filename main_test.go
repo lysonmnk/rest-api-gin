@@ -11,21 +11,17 @@ import (
 )
 
 func init() {
-	gin.SetMode(gin.TestMode) // kurangi log yang berisik saat test
+	gin.SetMode(gin.TestMode)
+	initDB()
 }
 
-// resetData mengembalikan data ke kondisi awal sebelum tiap test.
 func resetData() {
-	mu.Lock()
-	defer mu.Unlock()
-	books = []Book{
-		{ID: 1, Title: "Belajar Go", Author: "Ayu"},
-		{ID: 2, Title: "Web API", Author: "Bima"},
-	}
-	nextID = 3
+	// Reset tabel dan identity sequence di PostgreSQL
+	db.Exec("TRUNCATE TABLE books RESTART IDENTITY")
+	db.Create(&Book{Title: "Belajar Go", Author: "Ayu"})
+	db.Create(&Book{Title: "Web API", Author: "Bima"})
 }
 
-// doRequest mengirim request tiruan ke router tanpa menjalankan server sungguhan.
 func doRequest(method, path, body string) *httptest.ResponseRecorder {
 	r := setupRouter()
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
@@ -66,7 +62,7 @@ func TestGetBooks(t *testing.T) {
 
 func TestGetBooksFilterByAuthor(t *testing.T) {
 	resetData()
-	w := doRequest("GET", "/api/books?author=ayu", "") // huruf kecil pun cocok
+	w := doRequest("GET", "/api/books?author=ayu", "")
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", w.Code)
 	}
