@@ -1,4 +1,4 @@
-# 📚 Gin Books API
+# Gin Books API
 
 REST API manajemen buku yang dibangun dengan **Go (Golang)** dan **Gin Framework**.
 Proyek ini adalah Tugas Mandiri mata kuliah **Pengembangan Aplikasi Berbasis Web**.
@@ -12,7 +12,7 @@ Proyek ini adalah Tugas Mandiri mata kuliah **Pengembangan Aplikasi Berbasis Web
 
 ---
 
-## 📑 Daftar Isi
+## Daftar Isi
 
 1. [Tentang Proyek](#1-tentang-proyek)
 2. [Konsep Dasar (Penjelasan Sederhana)](#2-konsep-dasar-penjelasan-sederhana)
@@ -68,7 +68,7 @@ Resource `Book` memiliki tiga field:
 
 Penyimpanan awal memakai **slice in-memory** supaya fokus ke konsep Gin.
 
-> ⚠️ **Data hilang saat server dihentikan.** Untuk penyimpanan permanen, lihat
+> **Data hilang saat server dihentikan.** Untuk penyimpanan permanen, lihat
 > [bagian Bonus](#15-bonus-database-relasional-dengan-gorm--sqlite).
 
 ### Teknologi
@@ -88,7 +88,7 @@ Penyimpanan awal memakai **slice in-memory** supaya fokus ke konsep Gin.
 - **Gin** **bukan** bahasa pemrograman. Gin adalah **framework HTTP** yang dipakai di dalam program Go
   untuk membuat web server dan REST API dengan lebih mudah.
 
-> 🍳 **Analogi:** Go itu seperti **bahasa memasak** (cara kerja dasar di dapur).
+> **Analogi:** Go itu seperti **bahasa memasak** (cara kerja dasar di dapur).
 > Gin itu seperti **set peralatan dapur lengkap** yang sudah tertata, sehingga kamu tidak perlu
 > membuat kompor dan panci sendiri dari nol.
 
@@ -604,7 +604,7 @@ Base URL: `http://localhost:8080`
 }
 ```
 
-> ℹ️ Field `id` pada body akan **diabaikan**; ID selalu dibuat/dikendalikan oleh server.
+> ℹField `id` pada body akan **diabaikan**; ID selalu dibuat/dikendalikan oleh server.
 
 ---
 
@@ -649,7 +649,7 @@ curl -i http://localhost:8080/api/books/1
 
 ### 8.2 Dengan PowerShell (Windows)
 
-> ⚠️ Di PowerShell Windows, `curl` adalah alias `Invoke-WebRequest`, dan tanda kutip JSON sering bermasalah.
+> Di PowerShell Windows, `curl` adalah alias `Invoke-WebRequest`, dan tanda kutip JSON sering bermasalah.
 > Pakai `Invoke-RestMethod` agar aman.
 
 ```powershell
@@ -983,7 +983,7 @@ tetap berjalan dan bisa menimbulkan response ganda atau perubahan data yang tida
 Gin menangani banyak request **bersamaan**. Jika dua request mengubah slice `books` di waktu yang sama,
 data bisa rusak (*race condition*).
 
-> 🔐 **Analogi:** `books` itu seperti **papan tulis bersama**. `Lock()` = hanya satu orang boleh
+> **Analogi:** `books` itu seperti **papan tulis bersama**. `Lock()` = hanya satu orang boleh
 > menulis dan yang lain menunggu. `RLock()` = banyak orang boleh **membaca** bersamaan selama tidak ada yang menulis.
 
 ### Validasi format ≠ validasi aturan bisnis
