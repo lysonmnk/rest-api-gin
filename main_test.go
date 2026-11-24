@@ -8,28 +8,36 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/lysonmnk/rest-api-gin/config"
+	"github.com/lysonmnk/rest-api-gin/middleware"
+	"github.com/lysonmnk/rest-api-gin/migrations"
+	"github.com/lysonmnk/rest-api-gin/models"
+	"gorm.io/gorm"
 )
+
+var testDB *gorm.DB
 
 func init() {
 	gin.SetMode(gin.TestMode)
-	initDB()
+	testDB = config.ConnectDB()
+	migrations.RunMigrations(testDB)
 }
 
 func resetData() {
-	db.Exec("TRUNCATE TABLE books RESTART IDENTITY")
-	db.Exec("TRUNCATE TABLE users RESTART IDENTITY")
+	testDB.Exec("TRUNCATE TABLE books RESTART IDENTITY")
+	testDB.Exec("TRUNCATE TABLE users RESTART IDENTITY")
 
-	adminHash, _ := hashPassword("admin123")
-	lysonHash, _ := hashPassword("password123")
-	db.Create(&User{Username: "admin", Password: adminHash, FullName: "Administrator", Role: "Admin"})
-	db.Create(&User{Username: "lyson", Password: lysonHash, FullName: "Lyson Manik", Role: "User"})
+	adminHash, _ := middleware.HashPassword("admin123")
+	lysonHash, _ := middleware.HashPassword("password123")
+	testDB.Create(&models.User{Username: "admin", Password: adminHash, FullName: "Administrator", Role: "Admin"})
+	testDB.Create(&models.User{Username: "lyson", Password: lysonHash, FullName: "Lyson Manik", Role: "Mahasiswa"})
 
-	db.Create(&Book{Title: "Belajar Go", Author: "Ayu", ISBN: "978-602-001-A", PublishYear: 2023, Stock: 15})
-	db.Create(&Book{Title: "Web API", Author: "Bima", ISBN: "978-602-002-B", PublishYear: 2024, Stock: 12})
+	testDB.Create(&models.Book{Title: "Belajar Go", Author: "Ayu", ISBN: "978-602-001-A", PublishYear: 2023, Stock: 15})
+	testDB.Create(&models.Book{Title: "Web API dengan Gin", Author: "Bima", ISBN: "978-602-002-B", PublishYear: 2024, Stock: 12})
 }
 
 func doRequest(method, path, body string, token string) *httptest.ResponseRecorder {
-	r := setupRouter()
+	r := setupRouter(testDB)
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
@@ -50,11 +58,11 @@ func decode(t *testing.T, w *httptest.ResponseRecorder) map[string]any {
 }
 
 func getTestToken(t *testing.T) string {
-	var user User
-	if err := db.Where("username = ?", "admin").First(&user).Error; err != nil {
+	var user models.User
+	if err := testDB.Where("username = ?", "admin").First(&user).Error; err != nil {
 		t.Fatalf("gagal mencari user admin: %v", err)
 	}
-	token, err := generateToken(user)
+	token, err := middleware.GenerateToken(user)
 	if err != nil {
 		t.Fatalf("gagal generate token: %v", err)
 	}
@@ -69,7 +77,6 @@ func TestHealth(t *testing.T) {
 	}
 }
 
-// 1. Pengujian Alur Login Sukses (Menerima input, verifikasi bcrypt, generate JWT)
 func TestLoginSuccess(t *testing.T) {
 	resetData()
 	w := doRequest("POST", "/api/login", `{"username":"admin","password":"admin123"}`, "")
@@ -81,11 +88,10 @@ func TestLoginSuccess(t *testing.T) {
 		t.Fatalf("status = %v, want success", res["status"])
 	}
 	if res["token"] == nil || res["token"] == "" {
-		t.Fatalf("token seharusnya tidak kosong")
+		t.Fatalf("token tidak boleh kosong")
 	}
 }
 
-// 2. Pengujian Password Salah (Pesan generik mitigasi risiko)
 func TestLoginInvalidPassword(t *testing.T) {
 	resetData()
 	w := doRequest("POST", "/api/login", `{"username":"admin","password":"password-salah"}`, "")
@@ -98,7 +104,6 @@ func TestLoginInvalidPassword(t *testing.T) {
 	}
 }
 
-// 3. Pengujian User Tidak Ditemukan (Pesan generik sama persis)
 func TestLoginUserNotFound(t *testing.T) {
 	resetData()
 	w := doRequest("POST", "/api/login", `{"username":"tidak-ada","password":"password-apapun"}`, "")
@@ -111,7 +116,6 @@ func TestLoginUserNotFound(t *testing.T) {
 	}
 }
 
-// 4. Pengujian Validasi Input Format
 func TestLoginEmptyValidation(t *testing.T) {
 	resetData()
 	w := doRequest("POST", "/api/login", `{"username":"   ","password":""}`, "")
@@ -120,16 +124,14 @@ func TestLoginEmptyValidation(t *testing.T) {
 	}
 }
 
-// 5. Pengujian Proteksi Route Tanpa Autentikasi (Ditolak 401)
 func TestBooksRouteWithoutAuth(t *testing.T) {
 	resetData()
 	w := doRequest("GET", "/api/books", "", "")
 	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want 401 Unauthorized saat tanpa token", w.Code)
+		t.Fatalf("status = %d, want 401 Unauthorized", w.Code)
 	}
 }
 
-// 6. Pengujian Akses Route Dengan Autentikasi (Diterima 200)
 func TestGetBooksWithAuth(t *testing.T) {
 	resetData()
 	token := getTestToken(t)
@@ -143,11 +145,10 @@ func TestGetBooksWithAuth(t *testing.T) {
 	}
 }
 
-// 7. Pengujian Tambah Buku Dengan Autentikasi
 func TestCreateBookWithAuth(t *testing.T) {
 	resetData()
 	token := getTestToken(t)
-	w := doRequest("POST", "/api/books", `{"title":"Buku Baru","author":"Penulis Baru","isbn":"978-123","publish_year":2026,"stock":10}`, token)
+	w := doRequest("POST", "/api/books", `{"title":"Buku Modular","author":"Lyson Manik","isbn":"978-000","publish_year":2026,"stock":10}`, token)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("status = %d, want 201", w.Code)
 	}
@@ -157,7 +158,6 @@ func TestCreateBookWithAuth(t *testing.T) {
 	}
 }
 
-// 8. Pengujian Logout
 func TestLogout(t *testing.T) {
 	resetData()
 	w := doRequest("POST", "/api/logout", "", "")

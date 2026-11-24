@@ -225,7 +225,7 @@
     </div>
 
     <div class="footer-note">
-      Terproteksi dengan enkripsi Bcrypt & HTTP-Only Cookie
+      Terproteksi dengan Gin Session, Bcrypt & HTTP-Only Cookie
     </div>
   </div>
 
@@ -270,7 +270,6 @@
         const data = await response.json();
 
         if (response.ok && data.status === 'success') {
-          // Simpan token di localStorage sebagai fallback
           if (data.token) {
             localStorage.setItem('auth_token', data.token);
           }
@@ -279,12 +278,10 @@
           }
 
           loginBtn.innerText = '✅ Berhasil! Mengalihkan...';
-          // Redirect ke /books atau dashboard utama
           setTimeout(() => {
             window.location.href = '/';
-          }, 400);
+          }, 350);
         } else {
-          // Pesan gagal generik mitigasi risiko
           errorMessage.innerText = data.message || 'Username atau password salah';
           errorAlert.style.display = 'flex';
           loginBtn.disabled = false;
