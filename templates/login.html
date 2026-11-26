@@ -405,59 +405,134 @@
       border-radius: 6px;
     }
 
-    .demo-accounts {
+    /* Interactive VOXIE Ink Cartoon Companion */
+    .mascot-stage {
       margin-top: 22px;
       background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 16px;
       padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 0.2s ease;
     }
 
-    .demo-title {
-      font-size: 12px;
+    .mascot-stage:hover {
+      border-color: var(--yellow);
+    }
+
+    .mascot-frame {
+      width: 92px;
+      height: 76px;
+      border-radius: 12px;
+      background: var(--yellow);
+      border: 1px solid rgba(17, 17, 19, 0.2);
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      --look-x: 0px;
+      --look-y: 0px;
+    }
+
+    .mascot-stage.is-hiding .mascot-frame {
+      background: var(--orange);
+    }
+
+    .mascot-stage.is-peeking .mascot-frame {
+      background: var(--teal);
+    }
+
+    .mascot-svg {
+      width: 88px;
+      height: 74px;
+      display: block;
+    }
+
+    @keyframes mascotFloat {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(0, -2.5px, 0); }
+    }
+
+    @keyframes mascotWave {
+      0%, 100% { transform: rotate(0deg); }
+      35% { transform: rotate(-6deg); }
+      70% { transform: rotate(5deg); }
+    }
+
+    @keyframes mascotShake {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      25% { transform: translate3d(-4px, 0, 0); }
+      75% { transform: translate3d(4px, 0, 0); }
+    }
+
+    .mascot-head {
+      transform-origin: 44px 42px;
+      animation: mascotFloat 3.4s ease-in-out infinite;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .mascot-stage.is-waving .mascot-head {
+      animation: mascotWave 0.55s ease-in-out 2;
+    }
+
+    .mascot-stage.is-confused .mascot-head {
+      animation: mascotShake 0.36s ease-in-out 2;
+    }
+
+    .mascot-stage.is-happy .mascot-head {
+      transform: translate3d(0, -4px, 0) scale(1.04);
+    }
+
+    .mascot-pupils {
+      transform: translate3d(var(--look-x), var(--look-y), 0);
+      transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .paw-left,
+    .paw-right {
+      transform: translate3d(0, 0, 0);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .mascot-stage.is-hiding .paw-left {
+      transform: translate3d(8px, -25px, 0);
+    }
+
+    .mascot-stage.is-hiding .paw-right {
+      transform: translate3d(-8px, -25px, 0);
+    }
+
+    .mascot-stage.is-peeking .paw-left {
+      transform: translate3d(8px, -25px, 0);
+    }
+
+    .mascot-stage.is-peeking .paw-right {
+      transform: translate3d(-6px, -11px, 0);
+    }
+
+    .mascot-copy {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .mascot-title {
+      font-family: var(--font-display);
+      font-size: 14px;
       font-weight: 700;
       color: var(--text);
-      margin-bottom: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
     }
 
-    .demo-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      padding: 5px 0;
-      font-size: 13px;
+    .mascot-desc {
+      font-size: 12.5px;
       color: var(--text-muted);
-    }
-
-    .demo-item code {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      color: var(--text);
-      background: var(--surface-elevated);
-      padding: 2px 7px;
-      border-radius: 6px;
-    }
-
-    .demo-btn {
-      background: var(--surface-elevated);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 6px 12px;
-      min-height: 32px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-    }
-
-    .demo-btn:hover {
-      background: var(--orange);
-      color: var(--ink);
-      border-color: var(--orange);
+      line-height: 1.4;
+      text-wrap: pretty;
     }
 
     @media (max-width: 840px) {
@@ -591,15 +666,42 @@
         <button type="button" id="modeToggleBtn" onclick="toggleAuthMode()">Daftar di sini</button>
       </div>
 
-      <div class="demo-accounts">
-        <div class="demo-title">Akun Demo Tersedia</div>
-        <div class="demo-item">
-          <span>User: <code>lyson</code> / <code>password123</code></span>
-          <button type="button" class="demo-btn" onclick="fillAccount('lyson', 'password123')">Gunakan</button>
+      <div class="mascot-stage" id="mascotStage" role="button" tabindex="0" aria-label="Maskot penjaga katalog interaktif" onclick="waveMascot()">
+        <div class="mascot-frame" id="mascotFrame">
+          <svg class="mascot-svg" viewBox="0 0 88 74" fill="none" aria-hidden="true">
+            <g class="mascot-head">
+              <!-- Telinga kartun kiri & kanan -->
+              <path d="M22 25c-8 1-11 12-7 20 3 6 9 6 11 0" fill="#111113"/>
+              <path d="M66 25c8 1 11 12 7 20-3 6-9 6-11 0" fill="#111113"/>
+              <!-- Kepala karakter editorial ink -->
+              <rect x="23" y="13" width="42" height="42" rx="18" fill="#FAFAFA" stroke="#111113" stroke-width="2.6"/>
+              <!-- Mata / kacamata -->
+              <circle cx="35" cy="31" r="6.5" fill="#FAFAFA" stroke="#111113" stroke-width="2.2"/>
+              <circle cx="53" cy="31" r="6.5" fill="#FAFAFA" stroke="#111113" stroke-width="2.2"/>
+              <path d="M41.5 31h5" stroke="#111113" stroke-width="2.2"/>
+              <g class="mascot-pupils">
+                <circle cx="35" cy="31" r="2.6" fill="#111113"/>
+                <circle cx="53" cy="31" r="2.6" fill="#111113"/>
+              </g>
+              <!-- Hidung & senyum -->
+              <ellipse cx="44" cy="39" rx="3.4" ry="2.2" fill="#111113"/>
+              <path d="M39 44c2.2 2.4 7.8 2.4 10 0" stroke="#111113" stroke-width="2.2" stroke-linecap="round"/>
+            </g>
+            <!-- Buku terbuka di depan -->
+            <path d="M12 57c10-3 21-3 32 2 11-5 22-5 32-2v18H12V57Z" fill="#F15A24" stroke="#111113" stroke-width="2.5"/>
+            <path d="M44 59v16" stroke="#111113" stroke-width="2.4"/>
+            <!-- Tangan kiri & kanan (naik menutup mata saat password diketik) -->
+            <g class="paw-left">
+              <ellipse cx="26" cy="57" rx="8.5" ry="6.5" fill="#FAFAFA" stroke="#111113" stroke-width="2.4"/>
+            </g>
+            <g class="paw-right">
+              <ellipse cx="62" cy="57" rx="8.5" ry="6.5" fill="#FAFAFA" stroke="#111113" stroke-width="2.4"/>
+            </g>
+          </svg>
         </div>
-        <div class="demo-item">
-          <span>Admin: <code>admin</code> / <code>admin123</code></span>
-          <button type="button" class="demo-btn" onclick="fillAccount('admin', 'admin123')">Gunakan</button>
+        <div class="mascot-copy">
+          <div class="mascot-title" id="mascotTitle">Pustakawan Siaga</div>
+          <div class="mascot-desc" id="mascotDesc">Siap menemani masuk — aku otomatis menutup mata saat password diketik.</div>
         </div>
       </div>
     </section>
@@ -608,9 +710,67 @@
   <script>
     let isRegisterMode = false;
 
+    const mascotStage = document.getElementById('mascotStage');
+    const mascotFrame = document.getElementById('mascotFrame');
+    const mascotTitle = document.getElementById('mascotTitle');
+    const mascotDesc = document.getElementById('mascotDesc');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+
+    function setMascotState(state, title, desc) {
+      mascotStage.classList.remove('is-hiding', 'is-peeking', 'is-happy', 'is-confused');
+      if (state) mascotStage.classList.add(state);
+      if (title) mascotTitle.textContent = title;
+      if (desc) mascotDesc.textContent = desc;
+    }
+
+    function waveMascot() {
+      mascotStage.classList.remove('is-waving');
+      void mascotStage.offsetWidth;
+      mascotStage.classList.add('is-waving');
+      setMascotState('', 'Halo! Siap Membaca?', 'Ketik username & password untuk membuka katalog bukumu.');
+    }
+
+    mascotStage.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        waveMascot();
+      }
+    });
+
+    function updateEyesFollow(val) {
+      const shift = Math.max(-3.5, Math.min(3.5, ((val.length % 16) - 6) * 0.45));
+      mascotFrame.style.setProperty('--look-x', shift.toFixed(1) + 'px');
+      mascotFrame.style.setProperty('--look-y', '1.2px');
+    }
+
+    usernameInput.addEventListener('focus', () => {
+      updateEyesFollow(usernameInput.value);
+      setMascotState('', 'Mengenali Akun...', 'Aku mengikuti ketikanmu — isi nama pengguna terdaftar.');
+    });
+    usernameInput.addEventListener('input', () => updateEyesFollow(usernameInput.value));
+    usernameInput.addEventListener('blur', () => {
+      mascotFrame.style.setProperty('--look-x', '0px');
+      mascotFrame.style.setProperty('--look-y', '0px');
+    });
+
+    function syncPasswordPrivacyState() {
+      if (passwordInput.type === 'text') {
+        setMascotState('is-peeking', 'Mode Intip Aktif', 'Satu mata mengintip — klik ikon mata lagi untuk menyembunyikan.');
+      } else {
+        setMascotState('is-hiding', 'Mata Tertutup Rapat', 'Privasi aman — aku tidak melihat password yang kamu ketik.');
+      }
+    }
+
+    passwordInput.addEventListener('focus', syncPasswordPrivacyState);
+    passwordInput.addEventListener('blur', () => {
+      setMascotState('', 'Pustakawan Siaga', 'Siap menemani masuk — aku otomatis menutup mata saat password diketik.');
+    });
+
     function togglePassword() {
-      const pwd = document.getElementById('password');
-      pwd.type = pwd.type === 'password' ? 'text' : 'password';
+      passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
+      passwordInput.focus();
+      syncPasswordPrivacyState();
     }
 
     function showAlert(msg, isSuccess = false) {
@@ -630,13 +790,6 @@
       document.getElementById('loginBtn').innerText = isRegisterMode ? 'Daftar Akun Baru' : 'Masuk ke Sistem';
       document.getElementById('modePrompt').innerText = isRegisterMode ? 'Sudah punya akun?' : 'Belum punya akun?';
       document.getElementById('modeToggleBtn').innerText = isRegisterMode ? 'Masuk di sini' : 'Daftar di sini';
-      document.getElementById('errorAlert').style.display = 'none';
-    }
-
-    function fillAccount(u, p) {
-      toggleAuthMode(true);
-      document.getElementById('username').value = u;
-      document.getElementById('password').value = p;
       document.getElementById('errorAlert').style.display = 'none';
     }
 
@@ -686,11 +839,13 @@
             localStorage.setItem('user_profile', JSON.stringify(data.data));
           }
 
+          setMascotState('is-happy', 'Berhasil Masuk!', 'Membuka ruang kerja katalog Gin Books...');
           loginBtn.innerText = 'Berhasil! Mengalihkan...';
           setTimeout(() => {
             window.location.href = '/';
           }, 300);
         } else {
+          setMascotState('is-confused', 'Ups, Periksa Lagi', 'Username atau password belum cocok — coba periksa kembali.');
           showAlert(data.message || (isRegisterMode ? 'Registrasi gagal' : 'Username atau password salah'));
           loginBtn.disabled = false;
           loginBtn.innerText = isRegisterMode ? 'Daftar Akun Baru' : 'Masuk ke Sistem';
