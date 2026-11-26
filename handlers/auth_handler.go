@@ -71,7 +71,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// 5: Sesi & Token: Simpan ke Gin Session
+	// 5: Buat JWT terlebih dahulu agar gagal token tidak meninggalkan session tersimpan
+	token, err := middleware.GenerateToken(*user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Gagal membuat token autentikasi",
+		})
+		return
+	}
+
+	// Simpan ke Gin Session & HTTP-Only Cookie
 	session := sessions.Default(c)
 	session.Set("user_id", user.ID)
 	session.Set("username", user.Username)
@@ -85,15 +95,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Buat token JWT dan simpan di HTTP-Only Cookie
-	token, err := middleware.GenerateToken(*user)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": "Gagal membuat token autentikasi",
-		})
-		return
-	}
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("auth_token", token, 3600*24, "/", "", false, true)
 

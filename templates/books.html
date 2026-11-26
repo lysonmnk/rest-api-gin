@@ -142,7 +142,7 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const API_BASE = window.location.origin.includes('localhost:8080') ? '' : 'http://localhost:8080';
+    const API_BASE = window.location.protocol.startsWith('http') ? '' : 'http://localhost:8080';
 
     function getAuthHeaders() {
       const headers = { 'Content-Type': 'application/json' };
@@ -360,7 +360,8 @@
           closeEditModal();
           loadBooks();
         } else {
-          showToast('Gagal memperbarui buku', 'error');
+          const err = await res.json().catch(() => ({}));
+          showToast(err.message || 'Gagal memperbarui buku', 'error');
         }
       } catch (err) {
         showToast('Koneksi gagal', 'error');
@@ -376,6 +377,13 @@
       document.getElementById('searchInput').value = '';
       loadBooks();
     }
+
+    document.getElementById('searchInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchBooks();
+      }
+    });
 
     checkAuth().then(isLoggedIn => {
       if (isLoggedIn) loadBooks();

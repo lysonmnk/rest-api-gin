@@ -34,18 +34,6 @@ func (m *memUserRepo) FindByUsername(username string) (*models.User, error) {
 	return nil, gorm.ErrRecordNotFound
 }
 
-func (m *memUserRepo) FindByID(id uint) (*models.User, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	for _, u := range m.users {
-		if u.ID == id {
-			copyU := u
-			return &copyU, nil
-		}
-	}
-	return nil, gorm.ErrRecordNotFound
-}
-
 func (m *memUserRepo) Create(user *models.User) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -448,5 +436,114 @@ func TestGetBooksSearchQuery(t *testing.T) {
 	res := decode(t, w)
 	if res["count"].(float64) != 1 {
 		t.Fatalf("count = %v, want 1 buku yang judul/penulisnya cocok dengan 'Gin'", res["count"])
+	}
+}
+
+// --- Phase 2: Session Cookie, Edge Cases, & Template Polish ---
+
+func doRequestWithCookies(r *gin.Engine, method, path, body string, cookies []*http.Cookie) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	for _, ck := range cookies {
+		req.AddCookie(ck)
+	}
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+func TestSessionCookieAuthAndLogout(t *testing.T) {
+	resetData()
+	r := setupRouterWithRepos(testUsers, testBooks)
+
+	wLogin := doRequestWithCookies(r, "POST", "/api/login", `{"username":"lyson","password":"password123"}`, nil)
+	if wLogin.Code != http.StatusOK {
+		t.Fatalf("login status = %d, want 200", wLogin.Code)
+	}
+	cookies := wLogin.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatalf("login harus menyetel cookie session/auth")
+	}
+
+	wBooks := doRequestWithCookies(r, "GET", "/api/books", "", cookies)
+	if wBooks.Code != http.StatusOK {
+		t.Fatalf("GET /api/books via cookie status = %d, want 200", wBooks.Code)
+	}
+
+	wLogout := doRequestWithCookies(r, "POST", "/api/logout", "", cookies)
+	if wLogout.Code != http.StatusOK {
+		t.Fatalf("logout status = %d, want 200", wLogout.Code)
+	}
+
+	// Terapkan cookie hasil logout (termasuk MaxAge=-1 yang menghapus cookie)
+	active := make(map[string]*http.Cookie)
+	for _, ck := range cookies {
+		active[ck.Name] = ck
+	}
+	for _, ck := range wLogout.Result().Cookies() {
+		if ck.MaxAge < 0 || ck.Value == "" {
+			delete(active, ck.Name)
+		} else {
+			active[ck.Name] = ck
+		}
+	}
+	var afterCookies []*http.Cookie
+	for _, ck := range active {
+		afterCookies = append(afterCookies, ck)
+	}
+
+	wAfter := doRequestWithCookies(r, "GET", "/api/books", "", afterCookies)
+	if wAfter.Code != http.StatusUnauthorized {
+		t.Fatalf("akses setelah logout status = %d, want 401", wAfter.Code)
+	}
+}
+
+func TestBookValidationAndFilterEdgeCases(t *testing.T) {
+	resetData()
+	token := getTestToken(t)
+
+	if w := doRequest("GET", "/api/books/abc", "", token); w.Code != http.StatusBadRequest {
+		t.Fatalf("invalid id status = %d, want 400", w.Code)
+	}
+	if w := doRequest("PUT", "/api/books/1", `{"title":"Valid","author":"Ayu","stock":-1}`, token); w.Code != http.StatusBadRequest {
+		t.Fatalf("negative stock on update status = %d, want 400", w.Code)
+	}
+	if w := doRequest("POST", "/api/books", `{"title":"   ","author":"Ayu"}`, token); w.Code != http.StatusBadRequest {
+		t.Fatalf("whitespace title status = %d, want 400", w.Code)
+	}
+	if w := doRequest("POST", "/api/books", `{rusak`, token); w.Code != http.StatusBadRequest {
+		t.Fatalf("malformed json status = %d, want 400", w.Code)
+	}
+	wAuthor := doRequest("GET", "/api/books?author=ayu", "", token)
+	if wAuthor.Code != http.StatusOK || decode(t, wAuthor)["count"].(float64) != 1 {
+		t.Fatalf("author filter gagal: code=%d body=%s", wAuthor.Code, wAuthor.Body.String())
+	}
+	if w := doRequest("GET", "/api/tidak-ada", "", token); w.Code != http.StatusNotFound {
+		t.Fatalf("unknown route status = %d, want 404", w.Code)
+	}
+}
+
+func TestTemplatesPolishAndRegisterFlow(t *testing.T) {
+	booksRaw, err := os.ReadFile("templates/books.html")
+	if err != nil {
+		t.Fatalf("gagal membaca templates/books.html: %v", err)
+	}
+	booksHTML := string(booksRaw)
+	if strings.Contains(booksHTML, "includes('localhost:8080')") {
+		t.Fatalf("API_BASE masih hardcoded ke localhost:8080")
+	}
+	if !strings.Contains(booksHTML, "err.message || 'Gagal memperbarui buku'") {
+		t.Fatalf("editBookForm belum menampilkan pesan error JSON dari server")
+	}
+	if !strings.Contains(booksHTML, "searchInput") || !strings.Contains(booksHTML, "Enter") {
+		t.Fatalf("searchInput belum mendukung tombol Enter")
+	}
+
+	loginRaw, err := os.ReadFile("templates/login.html")
+	if err != nil {
+		t.Fatalf("gagal membaca templates/login.html: %v", err)
+	}
+	if !strings.Contains(string(loginRaw), "/api/register") {
+		t.Fatalf("templates/login.html belum memiliki alur registrasi (/api/register)")
 	}
 }

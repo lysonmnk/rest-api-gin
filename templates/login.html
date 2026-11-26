@@ -128,6 +128,26 @@
       align-items: center;
       gap: 8px;
     }
+    .alert-success {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+    }
+    .mode-switch {
+      text-align: center;
+      margin-top: 14px;
+      font-size: 13px;
+      color: #64748b;
+    }
+    .mode-switch button {
+      background: none;
+      border: none;
+      color: #2563eb;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+    }
     .demo-accounts {
       margin-top: 24px;
       background: #f8fafc;
@@ -195,6 +215,11 @@
     </div>
 
     <form id="loginForm">
+      <div class="form-group" id="fullNameGroup" style="display:none;">
+        <label for="fullName">Nama Lengkap</label>
+        <input type="text" id="fullName" placeholder="Masukkan nama lengkap...">
+      </div>
+
       <div class="form-group">
         <label for="username">Username</label>
         <input type="text" id="username" placeholder="Masukkan username..." required autofocus autocomplete="username">
@@ -210,6 +235,11 @@
 
       <button type="submit" id="loginBtn" class="btn-login">Masuk ke Sistem</button>
     </form>
+
+    <div class="mode-switch">
+      <span id="modePrompt">Belum punya akun?</span>
+      <button type="button" id="modeToggleBtn" onclick="toggleAuthMode()">Daftar di sini</button>
+    </div>
 
     <!-- Akun Demo Siap Pakai -->
     <div class="demo-accounts">
@@ -230,12 +260,31 @@
   </div>
 
   <script>
+    let isRegisterMode = false;
+
     function togglePassword() {
       const pwd = document.getElementById('password');
       pwd.type = pwd.type === 'password' ? 'text' : 'password';
     }
 
+    function showAlert(msg, isSuccess = false) {
+      const alertBox = document.getElementById('errorAlert');
+      alertBox.className = isSuccess ? 'alert-error alert-success' : 'alert-error';
+      document.getElementById('errorMessage').innerText = msg;
+      alertBox.style.display = 'flex';
+    }
+
+    function toggleAuthMode(forceLogin) {
+      isRegisterMode = typeof forceLogin === 'boolean' ? !forceLogin : !isRegisterMode;
+      document.getElementById('fullNameGroup').style.display = isRegisterMode ? 'block' : 'none';
+      document.getElementById('loginBtn').innerText = isRegisterMode ? 'Daftar Akun Baru' : 'Masuk ke Sistem';
+      document.getElementById('modePrompt').innerText = isRegisterMode ? 'Sudah punya akun?' : 'Belum punya akun?';
+      document.getElementById('modeToggleBtn').innerText = isRegisterMode ? 'Masuk di sini' : 'Daftar di sini';
+      document.getElementById('errorAlert').style.display = 'none';
+    }
+
     function fillAccount(u, p) {
+      toggleAuthMode(true);
       document.getElementById('username').value = u;
       document.getElementById('password').value = p;
       document.getElementById('errorAlert').style.display = 'none';
@@ -244,32 +293,42 @@
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const errorAlert = document.getElementById('errorAlert');
-      const errorMessage = document.getElementById('errorMessage');
       const loginBtn = document.getElementById('loginBtn');
 
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
+      const full_name = document.getElementById('fullName').value.trim();
 
       if (!username || !password) {
-        errorMessage.innerText = 'Username dan password wajib diisi';
-        errorAlert.style.display = 'flex';
+        showAlert('Username dan password wajib diisi');
         return;
       }
 
       errorAlert.style.display = 'none';
       loginBtn.disabled = true;
-      loginBtn.innerText = 'Memverifikasi...';
+      loginBtn.innerText = isRegisterMode ? 'Mendaftarkan...' : 'Memverifikasi...';
+
+      const endpoint = isRegisterMode ? '/api/register' : '/api/login';
+      const payload = isRegisterMode ? { username, password, full_name } : { username, password };
 
       try {
-        const response = await fetch('/api/login', {
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify(payload)
         });
 
         const data = await response.json();
 
         if (response.ok && data.status === 'success') {
+          if (isRegisterMode) {
+            toggleAuthMode(true);
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = '';
+            loginBtn.disabled = false;
+            showAlert('Registrasi berhasil! Silakan masuk dengan akun baru Anda.', true);
+            return;
+          }
           if (data.token) {
             localStorage.setItem('auth_token', data.token);
           }
@@ -282,16 +341,14 @@
             window.location.href = '/';
           }, 350);
         } else {
-          errorMessage.innerText = data.message || 'Username atau password salah';
-          errorAlert.style.display = 'flex';
+          showAlert(data.message || (isRegisterMode ? 'Registrasi gagal' : 'Username atau password salah'));
           loginBtn.disabled = false;
-          loginBtn.innerText = 'Masuk ke Sistem';
+          loginBtn.innerText = isRegisterMode ? 'Daftar Akun Baru' : 'Masuk ke Sistem';
         }
       } catch (err) {
-        errorMessage.innerText = 'Gagal terhubung ke server. Pastikan backend aktif.';
-        errorAlert.style.display = 'flex';
+        showAlert('Gagal terhubung ke server. Pastikan backend aktif.');
         loginBtn.disabled = false;
-        loginBtn.innerText = 'Masuk ke Sistem';
+        loginBtn.innerText = isRegisterMode ? 'Daftar Akun Baru' : 'Masuk ke Sistem';
       }
     });
   </script>
