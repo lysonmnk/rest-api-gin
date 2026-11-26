@@ -3,261 +3,607 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Masuk - Gin Books Management</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#0A0A0C">
+  <title>Masuk — Gin Books</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="icon" href="/static/favicon.ico" sizes="any">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --font-display: 'Bricolage Grotesque', 'Outfit', system-ui, sans-serif;
+      --font-body: 'Outfit', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --bg: #0A0A0C;
+      --surface: #141417;
+      --surface-elevated: #18181D;
+      --border: #272730;
+      --text: #FAFAFA;
+      --text-muted: #A1A1AA;
+      --ink: #111113;
+      --yellow: #FAD337;
+      --orange: #F15A24;
+      --pink: #F472B6;
+      --teal: #2DD4BF;
+      --danger-bg: #2A1215;
+      --danger-border: #7F1D1D;
+      --danger-text: #FCA5A5;
+      --success-bg: #0F291E;
+      --success-border: #14532D;
+      --success-text: #86EFAC;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    ::selection { background: var(--yellow); color: var(--ink); }
+    html { scrollbar-width: thin; scrollbar-color: #2D2D36 #0A0A0C; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
     body {
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-      color: #334155;
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 24px;
+      line-height: 1.5;
     }
-    .login-card {
-      background: #ffffff;
+
+    h1, h2, h3, .brand-wordmark {
+      font-family: var(--font-display);
+      text-wrap: balance;
+    }
+
+    .auth-shell {
       width: 100%;
-      max-width: 440px;
-      border-radius: 20px;
-      padding: 36px 32px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      max-width: 1020px;
+      display: grid;
+      grid-template-columns: 1.12fr 0.95fr;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 26px;
+      overflow: hidden;
+      box-shadow: 0 32px 72px rgba(0, 0, 0, 0.65);
+    }
+
+    /* Left Showcase: Exact VOXIE Obsidian + Vibrant Editorial Bento System + Depth Parallax */
+    .showcase-pane {
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 24px;
       position: relative;
+      overflow: hidden;
+      --px: 0px;
+      --py: 0px;
     }
-    .brand-header {
-      text-align: center;
-      margin-bottom: 28px;
+
+    .showcase-pane::before {
+      content: '';
+      position: absolute;
+      inset: -24px;
+      background-image: radial-gradient(rgba(250, 211, 55, 0.14) 1px, transparent 1px);
+      background-size: 22px 22px;
+      transform: translate3d(calc(var(--px) * -0.5), calc(var(--py) * -0.5), 0);
+      pointer-events: none;
+      opacity: 0.55;
     }
-    .brand-icon {
-      width: 56px;
-      height: 56px;
-      background: linear-gradient(135deg, #2563eb, #3b82f6);
-      border-radius: 16px;
-      display: inline-flex;
+
+    .showcase-pane > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .bento-hero svg {
+      transform: translate3d(var(--px), var(--py), 0);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .brand-row {
+      display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+      gap: 12px;
+    }
+
+    .brand-wordmark {
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+
+    .showcase-copy h1 {
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1.12;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .showcase-copy p {
+      font-size: 14.5px;
+      color: var(--text-muted);
+      max-width: 40ch;
+    }
+
+    .bento-preview {
+      display: grid;
+      gap: 12px;
+    }
+
+    .bento-hero {
+      background: var(--yellow);
+      color: var(--ink);
+      border-radius: 20px;
+      padding: 20px 22px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 110px;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .bento-pill {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid rgba(17, 17, 19, 0.34);
+      color: var(--ink);
+      padding: 3px 9px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+
+    .bento-hero h2 {
+      font-size: 21px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      color: var(--ink);
       margin-bottom: 12px;
     }
-    .brand-title {
-      font-size: 22px;
+
+    .bento-chip-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--ink);
+      color: var(--text);
+      font-size: 12px;
       font-weight: 700;
-      color: #0f172a;
+      padding: 6px 12px;
+      border-radius: 999px;
     }
-    .brand-subtitle {
-      font-size: 13.5px;
-      color: #64748b;
+
+    .bento-subgrid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .bento-mini {
+      border-radius: 18px;
+      padding: 16px;
+      color: var(--ink);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 128px;
+    }
+
+    .bento-mini--orange { background: var(--orange); }
+    .bento-mini--teal { background: var(--teal); }
+
+    .bento-mini-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .bento-mini h3 {
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1.18;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      margin-top: 8px;
+    }
+
+    .bento-mini span.mini-meta {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .showcase-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 11px 14px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+
+    .dot-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--yellow);
+      flex-shrink: 0;
+    }
+
+    /* Right Auth Form Panel */
+    .form-pane {
+      background: var(--surface);
+      padding: 36px 34px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .form-head { margin-bottom: 24px; }
+
+    .form-head h2 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .form-head p {
+      font-size: 14px;
+      color: var(--text-muted);
       margin-top: 4px;
     }
-    .form-group {
+
+    .alert-error {
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      color: var(--danger-text);
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 13.5px;
       margin-bottom: 18px;
+      display: none;
+      align-items: center;
+      gap: 10px;
     }
+
+    .alert-success {
+      background: var(--success-bg);
+      border-color: var(--success-border);
+      color: var(--success-text);
+    }
+
+    .form-group { margin-bottom: 16px; }
+
     .form-group label {
       display: block;
       font-size: 13px;
       font-weight: 600;
-      color: #334155;
-      margin-bottom: 6px;
+      color: var(--text);
+      margin-bottom: 7px;
     }
-    .input-wrapper {
-      position: relative;
-    }
-    input[type="text"], input[type="password"] {
+
+    .input-wrapper { position: relative; }
+
+    input[type="text"],
+    input[type="password"] {
       width: 100%;
-      padding: 12px 16px;
-      border: 1.5px solid #cbd5e1;
+      padding: 12px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: 12px;
-      font-size: 14px;
+      font-size: 14.5px;
       font-family: inherit;
+      color: var(--text);
       outline: none;
-      transition: all 0.2s;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
     }
-    input[type="text"]:focus, input[type="password"]:focus {
-      border-color: #2563eb;
-      box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.15);
+
+    input::placeholder { color: var(--text-muted); }
+
+    input:focus-visible,
+    button:focus-visible {
+      outline: 2px solid var(--yellow);
+      outline-offset: 2px;
     }
+
     .toggle-pwd {
       position: absolute;
-      right: 14px;
+      right: 8px;
       top: 50%;
       transform: translateY(-50%);
-      background: none;
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
       border: none;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 16px;
-      color: #94a3b8;
+      color: var(--text-muted);
     }
+
+    .toggle-pwd:hover {
+      color: var(--text);
+      background: var(--surface-elevated);
+    }
+
     .btn-login {
       width: 100%;
-      padding: 13px;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      color: white;
+      min-height: 46px;
+      padding: 12px 18px;
+      background: var(--yellow);
+      color: var(--ink);
       border: none;
-      border-radius: 12px;
+      border-radius: 999px;
       font-size: 15px;
-      font-weight: 600;
+      font-weight: 700;
       font-family: inherit;
       cursor: pointer;
-      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.25);
-      transition: all 0.2s;
       margin-top: 8px;
+      transition: transform 0.15s ease, filter 0.15s ease;
     }
+
     .btn-login:hover {
-      background: linear-gradient(135deg, #1d4ed8, #1e40af);
-      box-shadow: 0 6px 12px -2px rgba(37, 99, 235, 0.35);
+      filter: brightness(1.04);
       transform: translateY(-1px);
     }
+
     .btn-login:disabled {
       opacity: 0.6;
       cursor: not-allowed;
       transform: none;
     }
-    .alert-error {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      color: #b91c1c;
-      padding: 12px 14px;
-      border-radius: 10px;
-      font-size: 13.5px;
-      margin-bottom: 18px;
-      display: none;
-      align-items: center;
-      gap: 8px;
-    }
-    .alert-success {
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-      color: #166534;
-    }
+
     .mode-switch {
       text-align: center;
-      margin-top: 14px;
-      font-size: 13px;
-      color: #64748b;
+      margin-top: 16px;
+      font-size: 13.5px;
+      color: var(--text-muted);
     }
+
     .mode-switch button {
       background: none;
       border: none;
-      color: #2563eb;
-      font-weight: 600;
+      color: var(--yellow);
+      font-weight: 700;
       cursor: pointer;
       font-family: inherit;
-      font-size: 13px;
+      font-size: 13.5px;
+      padding: 4px 6px;
+      border-radius: 6px;
     }
+
     .demo-accounts {
-      margin-top: 24px;
-      background: #f8fafc;
-      border: 1px dashed #cbd5e1;
-      border-radius: 12px;
+      margin-top: 22px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
       padding: 14px 16px;
-      font-size: 12.5px;
     }
+
     .demo-title {
-      font-weight: 600;
-      color: #475569;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
+
     .demo-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 4px 0;
-      color: #64748b;
+      gap: 10px;
+      padding: 5px 0;
+      font-size: 13px;
+      color: var(--text-muted);
     }
+
     .demo-item code {
-      background: #e2e8f0;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: monospace;
-      color: #0f172a;
-    }
-    .demo-btn {
-      background: #e2e8f0;
-      border: none;
-      padding: 3px 8px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      color: #1e293b;
-      transition: background 0.15s;
-    }
-    .demo-btn:hover {
-      background: #cbd5e1;
-    }
-    .footer-note {
-      text-align: center;
-      margin-top: 20px;
+      font-family: 'JetBrains Mono', monospace;
       font-size: 12px;
-      color: #94a3b8;
+      color: var(--text);
+      background: var(--surface-elevated);
+      padding: 2px 7px;
+      border-radius: 6px;
+    }
+
+    .demo-btn {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      min-height: 32px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .demo-btn:hover {
+      background: var(--orange);
+      color: var(--ink);
+      border-color: var(--orange);
+    }
+
+    @media (max-width: 840px) {
+      .auth-shell { grid-template-columns: 1fr; }
+      .showcase-pane { border-right: none; border-bottom: 1px solid var(--border); padding: 26px 22px; }
+      .form-pane { padding: 28px 22px; }
+    }
+
+    @media (max-width: 520px) {
+      .bento-hero { grid-template-columns: 1fr; }
+      .bento-subgrid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-  <div class="login-card">
-    <div class="brand-header">
-      <div class="brand-icon">📚</div>
-      <h1 class="brand-title">Gin Books API</h1>
-      <p class="brand-subtitle">Silakan masuk untuk mengakses manajemen buku</p>
-    </div>
+  <main class="auth-shell">
+    <section class="showcase-pane" aria-label="Pratinjau katalog Gin Books">
+      <div>
+        <div class="brand-row" style="margin-bottom:22px;">
+          <img src="/static/gin-books-color.svg" width="32" height="32" alt="Logo Gin Books">
+          <span class="brand-wordmark">Gin Books</span>
+        </div>
 
-    <!-- Alert Pesan Gagal Generik -->
-    <div id="errorAlert" class="alert-error">
-      <span>⚠️</span>
-      <span id="errorMessage">Username atau password salah</span>
-    </div>
+        <div class="showcase-copy" style="margin-bottom:20px;">
+          <h1>Kelola koleksi buku dalam satu ruang kerja.</h1>
+          <p>Pencarian instan, pantau pergerakan stok, filter kategori, dan tandai buku favorit tanpa clutter.</p>
+        </div>
 
-    <form id="loginForm">
-      <div class="form-group" id="fullNameGroup" style="display:none;">
-        <label for="fullName">Nama Lengkap</label>
-        <input type="text" id="fullName" placeholder="Masukkan nama lengkap...">
-      </div>
+        <div class="bento-preview" aria-hidden="true">
+          <div class="bento-hero">
+            <div>
+              <span class="bento-pill">Kurasi • 2026</span>
+              <h2>Arsitektur Clean Go</h2>
+              <span class="bento-chip-cta">14 pcs tersedia</span>
+            </div>
+            <svg width="104" height="80" viewBox="0 0 96 72" fill="none">
+              <rect x="8" y="12" width="50" height="44" rx="7" fill="#FAFAFA" stroke="#111113" stroke-width="2.6"/>
+              <path d="M33 12v44" stroke="#111113" stroke-width="2.6"/>
+              <path d="M16 23h10M16 32h9M40 23h10" stroke="#111113" stroke-width="2.4" stroke-linecap="round"/>
+              <path d="M44 12v14l4-2.8L52 26V12" fill="#111113"/>
+              <circle cx="71" cy="40" r="12" fill="#FAFAFA" stroke="#111113" stroke-width="2.6"/>
+              <circle cx="71" cy="40" r="5" fill="#111113"/>
+              <path d="M80 49l9 10" stroke="#111113" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </div>
 
-      <div class="form-group">
-        <label for="username">Username</label>
-        <input type="text" id="username" placeholder="Masukkan username..." required autofocus autocomplete="username">
-      </div>
+          <div class="bento-subgrid">
+            <div class="bento-mini bento-mini--orange">
+              <div class="bento-mini-top">
+                <span class="bento-pill" style="margin-bottom:0;">Web &amp; API</span>
+                <svg width="48" height="36" viewBox="0 0 96 72" fill="none">
+                  <path d="M12 56h72" stroke="#111113" stroke-width="3" stroke-linecap="round"/>
+                  <rect x="16" y="20" width="15" height="36" rx="3.5" fill="#FAFAFA" stroke="#111113" stroke-width="2.8"/>
+                  <rect x="34" y="11" width="15" height="45" rx="3.5" fill="#111113"/>
+                  <path d="M52 17l13-4 10 39-13 4-10-39Z" fill="#FAFAFA" stroke="#111113" stroke-width="2.8"/>
+                </svg>
+              </div>
+              <div>
+                <h3>Web API Modern</h3>
+                <span class="mini-meta">Bima Pratama</span>
+              </div>
+            </div>
 
-      <div class="form-group">
-        <label for="password">Password</label>
-        <div class="input-wrapper">
-          <input type="password" id="password" placeholder="Masukkan password..." required autocomplete="current-password">
-          <button type="button" class="toggle-pwd" onclick="togglePassword()">👁️</button>
+            <div class="bento-mini bento-mini--teal">
+              <div class="bento-mini-top">
+                <span class="bento-pill" style="margin-bottom:0;">Basis Data</span>
+                <svg width="48" height="36" viewBox="0 0 96 72" fill="none">
+                  <path d="M12 20c11-5 24-5 36 3 12-8 25-8 36-3v35c-11-5-24-5-36 3-12-8-25-8-36-3V20Z" fill="#FAFAFA" stroke="#111113" stroke-width="2.8"/>
+                  <path d="M48 23v35" stroke="#111113" stroke-width="2.8"/>
+                </svg>
+              </div>
+              <div>
+                <h3>PostgreSQL Core</h3>
+                <span class="mini-meta">Lyson Manik</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <button type="submit" id="loginBtn" class="btn-login">Masuk ke Sistem</button>
-    </form>
-
-    <div class="mode-switch">
-      <span id="modePrompt">Belum punya akun?</span>
-      <button type="button" id="modeToggleBtn" onclick="toggleAuthMode()">Daftar di sini</button>
-    </div>
-
-    <!-- Akun Demo Siap Pakai -->
-    <div class="demo-accounts">
-      <div class="demo-title">🔑 Akun Default Terdaftar:</div>
-      <div class="demo-item">
-        <span>Username: <code>lyson</code> | Pass: <code>password123</code></span>
-        <button type="button" class="demo-btn" onclick="fillAccount('lyson', 'password123')">Gunakan</button>
+      <div class="showcase-status">
+        <span class="status-dot">
+          <span class="dot-indicator"></span>
+          <span>Katalog Aktif • Stok Terpantau</span>
+        </span>
+        <span>Single-click bookmark</span>
       </div>
-      <div class="demo-item">
-        <span>Username: <code>admin</code> | Pass: <code>admin123</code></span>
-        <button type="button" class="demo-btn" onclick="fillAccount('admin', 'admin123')">Gunakan</button>
-      </div>
-    </div>
+    </section>
 
-    <div class="footer-note">
-      Terproteksi dengan Gin Session, Bcrypt & HTTP-Only Cookie
-    </div>
-  </div>
+    <section class="form-pane">
+      <div class="form-head">
+        <h2 id="formHeading">Masuk ke Katalog</h2>
+        <p id="formSubheading">Gunakan akun terdaftar atau daftar akun baru.</p>
+      </div>
+
+      <div id="errorAlert" class="alert-error" role="alert">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+        </svg>
+        <span id="errorMessage">Username atau password salah</span>
+      </div>
+
+      <form id="loginForm">
+        <div class="form-group" id="fullNameGroup" style="display:none;">
+          <label for="fullName">Nama Lengkap</label>
+          <input type="text" id="fullName" placeholder="Masukkan nama lengkap...">
+        </div>
+
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" placeholder="Masukkan username..." required autofocus autocomplete="username">
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="input-wrapper">
+            <input type="password" id="password" placeholder="Masukkan password..." required autocomplete="current-password">
+            <button type="button" class="toggle-pwd" onclick="togglePassword()" aria-label="Tampilkan atau sembunyikan password">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="loginBtn" class="btn-login">Masuk ke Sistem</button>
+      </form>
+
+      <div class="mode-switch">
+        <span id="modePrompt">Belum punya akun?</span>
+        <button type="button" id="modeToggleBtn" onclick="toggleAuthMode()">Daftar di sini</button>
+      </div>
+
+      <div class="demo-accounts">
+        <div class="demo-title">Akun Demo Tersedia</div>
+        <div class="demo-item">
+          <span>User: <code>lyson</code> / <code>password123</code></span>
+          <button type="button" class="demo-btn" onclick="fillAccount('lyson', 'password123')">Gunakan</button>
+        </div>
+        <div class="demo-item">
+          <span>Admin: <code>admin</code> / <code>admin123</code></span>
+          <button type="button" class="demo-btn" onclick="fillAccount('admin', 'admin123')">Gunakan</button>
+        </div>
+      </div>
+    </section>
+  </main>
 
   <script>
     let isRegisterMode = false;
@@ -277,6 +623,10 @@
     function toggleAuthMode(forceLogin) {
       isRegisterMode = typeof forceLogin === 'boolean' ? !forceLogin : !isRegisterMode;
       document.getElementById('fullNameGroup').style.display = isRegisterMode ? 'block' : 'none';
+      document.getElementById('formHeading').innerText = isRegisterMode ? 'Buat Akun Baru' : 'Masuk ke Katalog';
+      document.getElementById('formSubheading').innerText = isRegisterMode
+        ? 'Daftar cepat untuk mengelola koleksi dan bookmark.'
+        : 'Gunakan akun terdaftar atau daftar akun baru.';
       document.getElementById('loginBtn').innerText = isRegisterMode ? 'Daftar Akun Baru' : 'Masuk ke Sistem';
       document.getElementById('modePrompt').innerText = isRegisterMode ? 'Sudah punya akun?' : 'Belum punya akun?';
       document.getElementById('modeToggleBtn').innerText = isRegisterMode ? 'Masuk di sini' : 'Daftar di sini';
@@ -336,10 +686,10 @@
             localStorage.setItem('user_profile', JSON.stringify(data.data));
           }
 
-          loginBtn.innerText = '✅ Berhasil! Mengalihkan...';
+          loginBtn.innerText = 'Berhasil! Mengalihkan...';
           setTimeout(() => {
             window.location.href = '/';
-          }, 350);
+          }, 300);
         } else {
           showAlert(data.message || (isRegisterMode ? 'Registrasi gagal' : 'Username atau password salah'));
           loginBtn.disabled = false;
@@ -351,6 +701,30 @@
         loginBtn.innerText = isRegisterMode ? 'Daftar Akun Baru' : 'Masuk ke Sistem';
       }
     });
+
+    (function initShowcaseParallax() {
+      const pane = document.querySelector('.showcase-pane');
+      if (!pane || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      let rafId = null;
+      let targetX = 0;
+      let targetY = 0;
+      pane.addEventListener('pointermove', (e) => {
+        const rect = pane.getBoundingClientRect();
+        targetX = (((e.clientX - rect.left) / rect.width) - 0.5) * 14;
+        targetY = (((e.clientY - rect.top) / rect.height) - 0.5) * 14;
+        if (!rafId) {
+          rafId = requestAnimationFrame(() => {
+            pane.style.setProperty('--px', targetX.toFixed(2) + 'px');
+            pane.style.setProperty('--py', targetY.toFixed(2) + 'px');
+            rafId = null;
+          });
+        }
+      });
+      pane.addEventListener('pointerleave', () => {
+        pane.style.setProperty('--px', '0px');
+        pane.style.setProperty('--py', '0px');
+      });
+    })();
   </script>
 </body>
 </html>

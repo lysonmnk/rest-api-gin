@@ -132,7 +132,7 @@ func AuthRequired() gin.HandlerFunc {
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, PATCH, DELETE")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
@@ -142,9 +142,12 @@ func CORSMiddleware() gin.HandlerFunc {
 	}
 }
 
-// RequestInfo mencatat log request masuk dan status keluar.
+// RequestInfo menambahkan header keamanan dasar serta mencatat log request masuk dan status keluar.
 func RequestInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		c.Writer.Header().Set("X-Content-Type-Options", "nosniff")
+		c.Writer.Header().Set("X-Frame-Options", "DENY")
+		c.Writer.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		log.Println("Request:", c.Request.Method, c.Request.URL.Path)
 		c.Next()
 		log.Println("Status:", c.Writer.Status())

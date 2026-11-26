@@ -1,0 +1,8 @@
+<svg fill="#000000" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-final"><title>Gin Books</title>
+  <title id="title-final">Gin Books</title>
+  <!-- Exact Pythagorean R=100 (4*(24,7,25) not needed; use 104 = 8*(12,5,13) shifted to (120,134) for asymmetric fold balance) -->
+  <!-- Wait: centered at (122,134), R=100, (96,-28) gave narrow gap; use exact R=100, inner r=50 with 30deg aperture (86.6,-50) & (43.3,-25) -->
+  <path fill="#000000" d="M 122 34 A 100 100 0 0 1 208.6 84 L 165.3 109 A 50 50 0 1 0 170.3 147 H 122 V 114 H 220 A 100 100 0 0 1 222 134 A 100 100 0 1 1 122 34 Z"/>
+  <!-- Upper-right folded page wedge with generous 18px aperture gap -->
+  <path fill="#000000" d="M 186 24 H 226 A 8 8 0 0 1 234 32 V 72 L 186 24 Z"/>
+</svg>

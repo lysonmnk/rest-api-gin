@@ -51,6 +51,10 @@ func setupRouterWithRepos(userRepo repository.UserRepository, bookRepo repositor
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
+	// Aset statis logo & favicon
+	r.Static("/static", "./static")
+	r.StaticFile("/favicon.ico", "./static/favicon.ico")
+
 	// Halaman UI Web
 	r.GET("/login", authHandler.ShowLoginPage)
 	r.GET("/", bookHandler.ShowBooksPage)
@@ -68,9 +72,13 @@ func setupRouterWithRepos(userRepo repository.UserRepository, bookRepo repositor
 	{
 		api.GET("/me", authHandler.Me)
 		api.GET("/books", bookHandler.GetBooks)
+		api.GET("/books/stats", bookHandler.GetStats)
+		api.GET("/books/export", bookHandler.ExportBooksCSV)
 		api.GET("/books/:id", bookHandler.GetBookByID)
 		api.POST("/books", bookHandler.CreateBook)
 		api.PUT("/books/:id", bookHandler.UpdateBook)
+		api.PATCH("/books/:id/bookmark", bookHandler.ToggleBookmark)
+		api.PATCH("/books/:id/stock", bookHandler.AdjustStock)
 		api.DELETE("/books/:id", bookHandler.DeleteBook)
 	}
 

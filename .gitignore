@@ -5,3 +5,4 @@ gin-books-linux
 gin-books-macos
 books.db
 .vscode/
+graphify-out/

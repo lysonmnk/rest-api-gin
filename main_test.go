@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -54,22 +55,54 @@ type memBookRepo struct {
 	nextID uint
 }
 
-func (m *memBookRepo) FindAll(author, search string) ([]models.Book, error) {
+func (m *memBookRepo) FindAll(filter models.BookFilter) ([]models.Book, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	author = strings.TrimSpace(author)
-	search = strings.ToLower(strings.TrimSpace(search))
+	author := strings.TrimSpace(filter.Author)
+	category := strings.TrimSpace(filter.Category)
+	search := strings.ToLower(strings.TrimSpace(filter.Search))
 	out := make([]models.Book, 0)
 	for _, b := range m.books {
 		if author != "" && !strings.EqualFold(b.Author, author) {
 			continue
 		}
+		if category != "" && !strings.EqualFold(b.Category, category) {
+			continue
+		}
+		if filter.BookmarkedOnly && !b.IsBookmarked {
+			continue
+		}
+		if filter.LowStockOnly && b.Stock > 5 {
+			continue
+		}
 		if search != "" &&
 			!strings.Contains(strings.ToLower(b.Title), search) &&
-			!strings.Contains(strings.ToLower(b.Author), search) {
+			!strings.Contains(strings.ToLower(b.Author), search) &&
+			!strings.Contains(strings.ToLower(b.Category), search) &&
+			!strings.Contains(strings.ToLower(b.ISBN), search) &&
+			!strings.Contains(strings.ToLower(b.Description), search) {
 			continue
 		}
 		out = append(out, b)
+	}
+	switch strings.TrimSpace(filter.Sort) {
+	case "stock_asc":
+		sort.SliceStable(out, func(i, j int) bool { return out[i].Stock < out[j].Stock })
+	case "stock_desc":
+		sort.SliceStable(out, func(i, j int) bool { return out[i].Stock > out[j].Stock })
+	case "title":
+		sort.SliceStable(out, func(i, j int) bool {
+			return strings.ToLower(out[i].Title) < strings.ToLower(out[j].Title)
+		})
+	case "newest":
+		sort.SliceStable(out, func(i, j int) bool {
+			if out[i].PublishYear != out[j].PublishYear {
+				return out[i].PublishYear > out[j].PublishYear
+			}
+			return out[i].ID > out[j].ID
+		})
+	default:
+		sort.SliceStable(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	}
 	return out, nil
 }
@@ -545,5 +578,145 @@ func TestTemplatesPolishAndRegisterFlow(t *testing.T) {
 	}
 	if !strings.Contains(string(loginRaw), "/api/register") {
 		t.Fatalf("templates/login.html belum memiliki alur registrasi (/api/register)")
+	}
+}
+
+// --- Phase 3 (RED tests: Bookmarks, Stock Delta, Category Filter, Static Assets) ---
+
+func TestToggleBookmarkAndFilter(t *testing.T) {
+	resetData()
+	token := getTestToken(t)
+
+	w := doRequest("PATCH", "/api/books/1/bookmark", "", token)
+	if w.Code != http.StatusOK {
+		t.Fatalf("bookmark status = %d, want 200 (body: %s)", w.Code, w.Body.String())
+	}
+	data := decode(t, w)["data"].(map[string]any)
+	if data["is_bookmarked"] != true {
+		t.Fatalf("is_bookmarked = %v, want true", data["is_bookmarked"])
+	}
+
+	wOnly := doRequest("GET", "/api/books?bookmarked=true", "", token)
+	if wOnly.Code != http.StatusOK || decode(t, wOnly)["count"].(float64) != 1 {
+		t.Fatalf("bookmarked filter gagal: code=%d body=%s", wOnly.Code, wOnly.Body.String())
+	}
+
+	w404 := doRequest("PATCH", "/api/books/999/bookmark", "", token)
+	if w404.Code != http.StatusNotFound {
+		t.Fatalf("bookmark unknown id = %d, want 404", w404.Code)
+	}
+}
+
+func TestAdjustBookStock(t *testing.T) {
+	resetData()
+	token := getTestToken(t)
+
+	w := doRequest("PATCH", "/api/books/1/stock", `{"delta":-5}`, token)
+	if w.Code != http.StatusOK {
+		t.Fatalf("stock adjust status = %d, want 200 (body: %s)", w.Code, w.Body.String())
+	}
+	data := decode(t, w)["data"].(map[string]any)
+	if data["stock"].(float64) != 10 {
+		t.Fatalf("stock = %v, want 10", data["stock"])
+	}
+
+	wBad := doRequest("PATCH", "/api/books/1/stock", `{"delta":-50}`, token)
+	if wBad.Code != http.StatusBadRequest {
+		t.Fatalf("negative resulting stock = %d, want 400", wBad.Code)
+	}
+}
+
+func TestStaticLogoAndFaviconServed(t *testing.T) {
+	resetData()
+	if w := doRequest("GET", "/static/gin-books-white.svg", "", ""); w.Code != http.StatusOK {
+		t.Fatalf("static logo status = %d, want 200", w.Code)
+	}
+	if w := doRequest("GET", "/static/favicon.ico", "", ""); w.Code != http.StatusOK {
+		t.Fatalf("static favicon status = %d, want 200", w.Code)
+	}
+}
+
+// --- Phase 4 (RED tests: Stats, Sort/LowStock Filter, CSV Export, Security Headers) ---
+
+func TestBookStatsEndpoint(t *testing.T) {
+	resetData()
+	token := getTestToken(t)
+
+	// Tambah buku stok menipis dan terbookmark
+	wCreate := doRequest("POST", "/api/books", `{"title":"Algoritma","author":"Citra","category":"Algoritma","stock":3}`, token)
+	if wCreate.Code != http.StatusCreated {
+		t.Fatalf("create book gagal: %d %s", wCreate.Code, wCreate.Body.String())
+	}
+	_ = doRequest("PATCH", "/api/books/1/bookmark", "", token)
+
+	w := doRequest("GET", "/api/books/stats", "", token)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /api/books/stats = %d, want 200 (body: %s)", w.Code, w.Body.String())
+	}
+	data := decode(t, w)["data"].(map[string]any)
+	if data["total_books"].(float64) != 3 {
+		t.Fatalf("total_books = %v, want 3", data["total_books"])
+	}
+	if data["total_stock"].(float64) != 30 {
+		t.Fatalf("total_stock = %v, want 30", data["total_stock"])
+	}
+	if data["bookmarked_count"].(float64) != 1 {
+		t.Fatalf("bookmarked_count = %v, want 1", data["bookmarked_count"])
+	}
+	if data["low_stock_count"].(float64) != 1 {
+		t.Fatalf("low_stock_count = %v, want 1", data["low_stock_count"])
+	}
+}
+
+func TestBookSortAndLowStockFilter(t *testing.T) {
+	resetData()
+	token := getTestToken(t)
+	_ = doRequest("POST", "/api/books", `{"title":"Algoritma Inti","author":"Citra","category":"Algoritma","stock":2}`, token)
+
+	wLow := doRequest("GET", "/api/books?low_stock=true", "", token)
+	if wLow.Code != http.StatusOK || decode(t, wLow)["count"].(float64) != 1 {
+		t.Fatalf("low_stock filter gagal: code=%d body=%s", wLow.Code, wLow.Body.String())
+	}
+
+	wSort := doRequest("GET", "/api/books?sort=stock_asc", "", token)
+	if wSort.Code != http.StatusOK {
+		t.Fatalf("sort stock_asc gagal: code=%d", wSort.Code)
+	}
+	items := decode(t, wSort)["data"].([]any)
+	first := items[0].(map[string]any)
+	if first["title"] != "Algoritma Inti" {
+		t.Fatalf("first book stock_asc = %v, want Algoritma Inti", first["title"])
+	}
+}
+
+func TestExportBooksCSV(t *testing.T) {
+	resetData()
+	token := getTestToken(t)
+	_ = doRequest("POST", "/api/books", `{"title":"=CMD()","author":"Citra","stock":1}`, token)
+
+	w := doRequest("GET", "/api/books/export", "", token)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /api/books/export = %d, want 200", w.Code)
+	}
+	if !strings.Contains(w.Header().Get("Content-Type"), "text/csv") {
+		t.Fatalf("Content-Type = %q, want text/csv", w.Header().Get("Content-Type"))
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "ID,Judul,Penulis,Kategori,ISBN,Tahun,Stok,Bookmark") {
+		t.Fatalf("CSV header tidak sesuai: %s", body)
+	}
+	if strings.Contains(body, ",=CMD(),") || !strings.Contains(body, "'=CMD()") {
+		t.Fatalf("CSV tidak menetralkan formula injection: %s", body)
+	}
+}
+
+func TestSecurityHeadersPresent(t *testing.T) {
+	resetData()
+	w := doRequest("GET", "/health", "", "")
+	if w.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("X-Content-Type-Options = %q, want nosniff", w.Header().Get("X-Content-Type-Options"))
+	}
+	if w.Header().Get("X-Frame-Options") != "DENY" {
+		t.Fatalf("X-Frame-Options = %q, want DENY", w.Header().Get("X-Frame-Options"))
 	}
 }

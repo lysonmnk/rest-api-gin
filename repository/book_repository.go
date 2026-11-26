@@ -9,7 +9,7 @@ import (
 
 // BookRepository mendefinisikan kontrak operasi database untuk entitas Book.
 type BookRepository interface {
-	FindAll(author, search string) ([]models.Book, error)
+	FindAll(filter models.BookFilter) ([]models.Book, error)
 	FindByID(id uint) (*models.Book, error)
 	Create(book *models.Book) error
 	Update(book *models.Book) error
@@ -25,23 +25,44 @@ func NewBookRepository(db *gorm.DB) BookRepository {
 	return &bookRepository{db: db}
 }
 
-// FindAll mengambil daftar buku dengan filter opsional penulis atau kata kunci judul/penulis.
-func (r *bookRepository) FindAll(author, search string) ([]models.Book, error) {
+var allowedSortOrders = map[string]string{
+	"stock_asc":  "stock asc, id asc",
+	"stock_desc": "stock desc, id asc",
+	"title":      "LOWER(title) asc, id asc",
+	"newest":     "publish_year desc, id desc",
+}
+
+// FindAll mengambil daftar buku dengan filter opsional penulis, kategori, bookmark, stok menipis, pencarian, dan pengurutan.
+func (r *bookRepository) FindAll(filter models.BookFilter) ([]models.Book, error) {
 	var books []models.Book
 	query := r.db
 
-	author = strings.TrimSpace(author)
-	if author != "" {
+	if author := strings.TrimSpace(filter.Author); author != "" {
 		query = query.Where("LOWER(author) = LOWER(?)", author)
 	}
-
-	search = strings.TrimSpace(search)
-	if search != "" {
+	if category := strings.TrimSpace(filter.Category); category != "" {
+		query = query.Where("LOWER(category) = LOWER(?)", category)
+	}
+	if filter.BookmarkedOnly {
+		query = query.Where("is_bookmarked = ?", true)
+	}
+	if filter.LowStockOnly {
+		query = query.Where("stock <= ?", 5)
+	}
+	if search := strings.TrimSpace(filter.Search); search != "" {
 		pattern := "%" + search + "%"
-		query = query.Where("LOWER(title) LIKE LOWER(?) OR LOWER(author) LIKE LOWER(?)", pattern, pattern)
+		query = query.Where(
+			"(LOWER(title) LIKE LOWER(?) OR LOWER(author) LIKE LOWER(?) OR LOWER(category) LIKE LOWER(?) OR LOWER(isbn) LIKE LOWER(?) OR LOWER(description) LIKE LOWER(?))",
+			pattern, pattern, pattern, pattern, pattern,
+		)
 	}
 
-	if err := query.Order("id asc").Find(&books).Error; err != nil {
+	orderClause, ok := allowedSortOrders[strings.TrimSpace(filter.Sort)]
+	if !ok {
+		orderClause = "id asc"
+	}
+
+	if err := query.Order(orderClause).Find(&books).Error; err != nil {
 		return nil, err
 	}
 
