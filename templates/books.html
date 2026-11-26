@@ -80,7 +80,7 @@
     <div class="card">
       <div class="card-title">📖 Daftar Koleksi Buku</div>
       <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Cari berdasarkan nama penulis (contoh: Ayu, Bima, Lyson)...">
+        <input type="text" id="searchInput" placeholder="Cari judul atau penulis buku (contoh: Gin, Ayu, Lyson)...">
         <button type="button" class="btn-primary" onclick="searchBooks()">Cari</button>
         <button type="button" class="btn-secondary" onclick="resetSearch()">Semua</button>
       </div>
@@ -200,10 +200,10 @@
       window.location.href = '/login';
     }
 
-    async function loadBooks(authorFilter = '') {
+    async function loadBooks(searchQuery = '') {
       try {
         let url = API_BASE + '/api/books';
-        if (authorFilter) url += '?author=' + encodeURIComponent(authorFilter);
+        if (searchQuery) url += '?q=' + encodeURIComponent(searchQuery);
         const res = await fetch(url, { headers: getAuthHeaders() });
         
         if (res.status === 401) {
@@ -221,6 +221,19 @@
         }
         document.getElementById('emptyMessage').style.display = 'none';
 
+        function makeCell(tag, text, className) {
+          const td = document.createElement('td');
+          if (!tag) {
+            td.textContent = text;
+            return td;
+          }
+          const el = document.createElement(tag);
+          if (className) el.className = className;
+          el.textContent = text;
+          td.appendChild(el);
+          return td;
+        }
+
         data.data.forEach(book => {
           const tr = document.createElement('tr');
           const isbn = book.isbn || '-';
@@ -228,19 +241,33 @@
           const stock = book.stock != null ? book.stock : 0;
           const createdAt = formatDate(book.created_at);
 
-          tr.innerHTML = `
-            <td><b>#${book.id}</b></td>
-            <td><b>${book.title}</b></td>
-            <td>${book.author}</td>
-            <td><code>${isbn}</code></td>
-            <td>${year}</td>
-            <td><span class="tag-stock">${stock} pcs</span></td>
-            <td><span class="date-text">${createdAt}</span></td>
-            <td style="text-align: center;">
-              <button class="btn-edit" onclick="openEditModal(${book.id}, '${book.title.replace(/'/g, "\\'")}', '${book.author.replace(/'/g, "\\'")}', '${(book.isbn||'').replace(/'/g, "\\'")}', ${book.publish_year||0}, ${book.stock||0})">✏️ Edit</button>
-              <button class="btn-delete" onclick="deleteBook(${book.id})">🗑️ Hapus</button>
-            </td>
-          `;
+          tr.appendChild(makeCell('b', '#' + book.id));
+          tr.appendChild(makeCell('b', book.title));
+          tr.appendChild(makeCell(null, book.author));
+          tr.appendChild(makeCell('code', isbn));
+          tr.appendChild(makeCell(null, String(year)));
+          tr.appendChild(makeCell('span', stock + ' pcs', 'tag-stock'));
+          tr.appendChild(makeCell('span', createdAt, 'date-text'));
+
+          const actionsTd = document.createElement('td');
+          actionsTd.style.textAlign = 'center';
+
+          const editBtn = document.createElement('button');
+          editBtn.className = 'btn-edit';
+          editBtn.textContent = '✏️ Edit';
+          editBtn.addEventListener('click', () => {
+            openEditModal(book.id, book.title, book.author, book.isbn || '', book.publish_year || 0, book.stock || 0);
+          });
+
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'btn-delete';
+          deleteBtn.textContent = '🗑️ Hapus';
+          deleteBtn.addEventListener('click', () => deleteBook(book.id));
+
+          actionsTd.appendChild(editBtn);
+          actionsTd.appendChild(deleteBtn);
+          tr.appendChild(actionsTd);
+
           tbody.appendChild(tr);
         });
       } catch (err) {

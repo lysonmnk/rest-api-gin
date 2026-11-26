@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/lysonmnk/rest-api-gin/middleware"
 	"github.com/lysonmnk/rest-api-gin/models"
 	"github.com/lysonmnk/rest-api-gin/repository"
+	"gorm.io/gorm"
 )
 
 type AuthHandler struct {
@@ -85,10 +87,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	// Buat token JWT dan simpan di HTTP-Only Cookie
 	token, err := middleware.GenerateToken(*user)
-	if err == nil {
-		c.SetSameSite(http.SameSiteLaxMode)
-		c.SetCookie("auth_token", token, 3600*24, "/", "", false, true)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Gagal membuat token autentikasi",
+		})
+		return
 	}
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("auth_token", token, 3600*24, "/", "", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
@@ -103,14 +110,94 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 }
 
-// Logout menghapus sesi login dan cookie autentikasi.
-func (h *AuthHandler) Logout(c *gin.Context) {
+func clearAuthSession(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
 	_ = session.Save()
 
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("auth_token", "", -1, "/", "", false, true)
+}
+
+// Register mendaftarkan akun pengguna baru dengan role default User.
+func (h *AuthHandler) Register(c *gin.Context) {
+	var input models.RegisterInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "Username dan password wajib diisi",
+		})
+		return
+	}
+
+	input.Username = strings.TrimSpace(input.Username)
+	input.Password = strings.TrimSpace(input.Password)
+	input.FullName = strings.TrimSpace(input.FullName)
+	if input.Username == "" || len(input.Password) < 6 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "Username wajib diisi dan password minimal 6 karakter",
+		})
+		return
+	}
+	if input.FullName == "" {
+		input.FullName = input.Username
+	}
+
+	_, err := h.userRepo.FindByUsername(input.Username)
+	if err == nil {
+		c.JSON(http.StatusConflict, gin.H{
+			"status":  "error",
+			"message": "Username sudah digunakan",
+		})
+		return
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Gagal memeriksa ketersediaan username",
+		})
+		return
+	}
+
+	hashed, err := middleware.HashPassword(input.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Gagal memproses password",
+		})
+		return
+	}
+
+	user := models.User{
+		Username: input.Username,
+		Password: hashed,
+		FullName: input.FullName,
+		Role:     "User",
+	}
+	if err := h.userRepo.Create(&user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Gagal menyimpan akun baru",
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"status":  "success",
+		"message": "Registrasi berhasil",
+		"data": gin.H{
+			"id":        user.ID,
+			"username":  user.Username,
+			"full_name": user.FullName,
+			"role":      user.Role,
+		},
+	})
+}
+
+// Logout menghapus sesi login dan cookie autentikasi.
+func (h *AuthHandler) Logout(c *gin.Context) {
+	clearAuthSession(c)
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
@@ -120,12 +207,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 // LogoutAndRedirect melakukan logout lalu mengalihkan ke /login.
 func (h *AuthHandler) LogoutAndRedirect(c *gin.Context) {
-	session := sessions.Default(c)
-	session.Clear()
-	_ = session.Save()
-
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("auth_token", "", -1, "/", "", false, true)
+	clearAuthSession(c)
 	c.Redirect(http.StatusFound, "/login")
 }
 

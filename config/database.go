@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/rand"
 	"fmt"
 	"log"
 	"os"
@@ -15,6 +16,22 @@ func GetEnv(key, defaultVal string) string {
 		return val
 	}
 	return defaultVal
+}
+
+// GetSecret membaca secret dari env var; di dev/test membuat secret acak jika belum diset.
+func GetSecret(key string) []byte {
+	if val := os.Getenv(key); val != "" {
+		return []byte(val)
+	}
+	if os.Getenv("GIN_MODE") == "release" {
+		log.Fatalf("Environment variable %s wajib diset saat GIN_MODE=release", key)
+	}
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		log.Fatalf("Gagal membuat secret acak untuk %s: %v", key, err)
+	}
+	log.Printf("PERINGATAN: %s belum diset, memakai secret acak sementara untuk sesi dev/test", key)
+	return buf
 }
 
 // ConnectDB menginisialisasi dan mengembalikan koneksi database PostgreSQL via GORM.

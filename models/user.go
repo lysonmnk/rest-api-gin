@@ -17,3 +17,10 @@ type LoginInput struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
+
+// RegisterInput merepresentasikan data body saat registrasi akun baru.
+type RegisterInput struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+	FullName string `json:"full_name"`
+}

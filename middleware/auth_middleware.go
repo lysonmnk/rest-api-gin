@@ -15,7 +15,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var jwtSecret = []byte(config.GetEnv("JWT_SECRET", "super-secret-jwt-key-pabwe-gin-books-2026"))
+var jwtSecret = config.GetSecret("JWT_SECRET")
 
 // JWTClaims menyimpan payload identitas pengguna di dalam token.
 type JWTClaims struct {

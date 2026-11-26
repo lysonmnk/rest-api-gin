@@ -9,7 +9,7 @@ import (
 
 // BookRepository mendefinisikan kontrak operasi database untuk entitas Book.
 type BookRepository interface {
-	FindAll(author string) ([]models.Book, error)
+	FindAll(author, search string) ([]models.Book, error)
 	FindByID(id uint) (*models.Book, error)
 	Create(book *models.Book) error
 	Update(book *models.Book) error
@@ -25,14 +25,20 @@ func NewBookRepository(db *gorm.DB) BookRepository {
 	return &bookRepository{db: db}
 }
 
-// FindAll mengambil daftar buku dengan filter opsional penulis (case-insensitive).
-func (r *bookRepository) FindAll(author string) ([]models.Book, error) {
+// FindAll mengambil daftar buku dengan filter opsional penulis atau kata kunci judul/penulis.
+func (r *bookRepository) FindAll(author, search string) ([]models.Book, error) {
 	var books []models.Book
 	query := r.db
 
 	author = strings.TrimSpace(author)
 	if author != "" {
 		query = query.Where("LOWER(author) = LOWER(?)", author)
+	}
+
+	search = strings.TrimSpace(search)
+	if search != "" {
+		pattern := "%" + search + "%"
+		query = query.Where("LOWER(title) LIKE LOWER(?) OR LOWER(author) LIKE LOWER(?)", pattern, pattern)
 	}
 
 	if err := query.Order("id asc").Find(&books).Error; err != nil {

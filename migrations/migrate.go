@@ -3,18 +3,17 @@ package migrations
 import (
 	"log"
 
+	"github.com/lysonmnk/rest-api-gin/middleware"
 	"github.com/lysonmnk/rest-api-gin/models"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
-// hashPassword membantu hashing password dengan Bcrypt untuk seeding awal.
-func hashPassword(password string) string {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+func hashSeedPassword(password string) string {
+	hashed, err := middleware.HashPassword(password)
 	if err != nil {
 		log.Fatalf("Gagal melakukan hash password seed: %v", err)
 	}
-	return string(bytes)
+	return hashed
 }
 
 // RunMigrations menjalankan migrasi skema tabel dan seeding data awal.
@@ -30,13 +29,13 @@ func RunMigrations(db *gorm.DB) {
 	if userCount == 0 {
 		db.Create(&models.User{
 			Username: "admin",
-			Password: hashPassword("admin123"),
+			Password: hashSeedPassword("admin123"),
 			FullName: "Administrator",
 			Role:     "Admin",
 		})
 		db.Create(&models.User{
 			Username: "lyson",
-			Password: hashPassword("password123"),
+			Password: hashSeedPassword("password123"),
 			FullName: "Lyson Manik",
 			Role:     "Mahasiswa",
 		})

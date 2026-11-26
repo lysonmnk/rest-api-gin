@@ -56,13 +56,42 @@ func bindBook(c *gin.Context) (models.Book, bool) {
 		})
 		return models.Book{}, false
 	}
+	if input.Stock < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "stock tidak boleh negatif",
+		})
+		return models.Book{}, false
+	}
+	if input.PublishYear != 0 && (input.PublishYear < 1900 || input.PublishYear > 2100) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "publish_year harus antara 1900 dan 2100",
+		})
+		return models.Book{}, false
+	}
 	return input, true
 }
 
-// GetBooks mengembalikan daftar semua buku (dengan filter opsional ?author=...).
+func respondBookLookupError(c *gin.Context, err error) {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"status":  "error",
+			"message": "Buku tidak ditemukan",
+		})
+		return
+	}
+	c.JSON(http.StatusInternalServerError, gin.H{
+		"status":  "error",
+		"message": "Terjadi kesalahan pada server",
+	})
+}
+
+// GetBooks mengembalikan daftar semua buku (dengan filter opsional ?author=... atau ?q=...).
 func (h *BookHandler) GetBooks(c *gin.Context) {
 	author := c.Query("author")
-	books, err := h.bookRepo.FindAll(author)
+	search := c.Query("q")
+	books, err := h.bookRepo.FindAll(author, search)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
@@ -87,17 +116,7 @@ func (h *BookHandler) GetBookByID(c *gin.Context) {
 
 	book, err := h.bookRepo.FindByID(id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"status":  "error",
-				"message": "Buku tidak ditemukan",
-			})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status":  "error",
-				"message": "Terjadi kesalahan pada server",
-			})
-		}
+		respondBookLookupError(c, err)
 		return
 	}
 
@@ -142,17 +161,7 @@ func (h *BookHandler) UpdateBook(c *gin.Context) {
 
 	book, err := h.bookRepo.FindByID(id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"status":  "error",
-				"message": "Buku tidak ditemukan",
-			})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status":  "error",
-				"message": "Terjadi kesalahan pada server",
-			})
-		}
+		respondBookLookupError(c, err)
 		return
 	}
 

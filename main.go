@@ -15,8 +15,18 @@ import (
 	"gorm.io/gorm"
 )
 
-// setupRouter mengonfigurasi routing dan middleware aplikasi.
+var sessionSecret = config.GetSecret("SESSION_SECRET")
+
+// setupRouter mengonfigurasi routing dan middleware aplikasi dengan database GORM.
 func setupRouter(db *gorm.DB) *gin.Engine {
+	return setupRouterWithRepos(
+		repository.NewUserRepository(db),
+		repository.NewBookRepository(db),
+	)
+}
+
+// setupRouterWithRepos mengonfigurasi routing dan middleware dengan repository yang dapat diuji terisolasi.
+func setupRouterWithRepos(userRepo repository.UserRepository, bookRepo repository.BookRepository) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
@@ -24,7 +34,6 @@ func setupRouter(db *gorm.DB) *gin.Engine {
 	r.Use(middleware.CORSMiddleware())
 
 	// 1. Session Store (gin-contrib/sessions dengan cookie store)
-	sessionSecret := []byte(config.GetEnv("SESSION_SECRET", "gin-books-super-secret-session-2026"))
 	store := cookie.NewStore(sessionSecret)
 	store.Options(sessions.Options{
 		Path:     "/",
@@ -32,10 +41,6 @@ func setupRouter(db *gorm.DB) *gin.Engine {
 		HttpOnly: true,
 	})
 	r.Use(sessions.Sessions("gin_books_session", store))
-
-	// Inisialisasi Repository
-	userRepo := repository.NewUserRepository(db)
-	bookRepo := repository.NewBookRepository(db)
 
 	// Inisialisasi Handler
 	authHandler := handlers.NewAuthHandler(userRepo)
@@ -52,6 +57,7 @@ func setupRouter(db *gorm.DB) *gin.Engine {
 	r.GET("/books", bookHandler.ShowBooksPage)
 
 	// Endpoint API Autentikasi Publik
+	r.POST("/api/register", authHandler.Register)
 	r.POST("/api/login", authHandler.Login)
 	r.POST("/api/logout", authHandler.Logout)
 	r.GET("/api/logout", authHandler.LogoutAndRedirect)
